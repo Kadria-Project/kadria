@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Sparkles, Trash2 } from 'lucide-react';
 import type { AssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
 import { toKadriaAssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
 import { getCollaboratorSuggestions, type CollaboratorSuggestion } from '@/src/lib/kadria-assistant/collaborator-suggestions';
@@ -191,16 +192,6 @@ function savePersistedSession(session: PersistedSession) {
   }
 }
 
-const QUICK_STARTS = [
-  'Voir ce que je dois faire aujourd’hui',
-  'Que dois-je régler en priorité ?',
-  'Aidez-moi à améliorer mon profil métier',
-  'Quelles prestations devrais-je proposer ?',
-  'Aidez-moi à définir mes tarifs indicatifs',
-  'Comment améliorer mon centre de progression ?',
-  'Comment mieux convertir mes prospects ?',
-];
-
 // Assistant interne pour l'artisan connecté (distinct du widget prospect
 // existant et de l'assistant vocal Vapi). Strictement lecture seule côté
 // produit : ce composant ne fait qu'afficher la conversation et appeler
@@ -224,6 +215,8 @@ export default function KadriaAssistantWidget() {
   const inputRef = useRef<HTMLInputElement>(null);
   const quickStarts = getQuickStarts(pageContext);
   const contextualSuggestions = useMemo(() => getCollaboratorSuggestions(shellContext), [shellContext]);
+  const visibleSuggestions = contextualSuggestions.slice(0, 4);
+  const contextTitle = shellContext.entity?.label || ({ dashboard: 'Accueil', calendar: 'Agenda', performance: 'Performance', settings: 'Paramètres', tasks: 'À faire', tracking: 'Suivi', clients: 'Clients', project: 'Projet', resources: 'Ressources', unknown: 'Kadria' } as const)[shellContext.pageType];
 
   function isTodayActionsPrompt(value: string) {
     return /actions du jour|que dois-je faire aujourd'hui|que faire aujourd'hui|priorites du jour|voir ce que je dois faire aujourd’hui|voir ce que je dois faire aujourd'hui/i.test(value.trim());
@@ -594,6 +587,14 @@ export default function KadriaAssistantWidget() {
     closeCollaborator();
   }
 
+  function clearConversation() {
+    if (!window.confirm('Effacer cette conversation locale ?')) return;
+    setMessages([]);
+    setUsage(null);
+    setError(null);
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  }
+
   function renderTodayActionCards(items: TodayActionCard[]) {
     return (
       <div className="mt-2 flex flex-col gap-2.5">
@@ -674,13 +675,13 @@ export default function KadriaAssistantWidget() {
       </button> */}
 
         <div className={integratedDesktop ? 'kadria-native-pane flex h-full w-[clamp(360px,28vw,420px)] shrink-0 border-l border-slate-200 bg-white' : 'fixed inset-0'} style={integratedDesktop ? undefined : { zIndex: SHELL_OVERLAY_LAYERS.dialog }}>
-          {integratedDesktop && <style jsx>{`
+          <style jsx>{`
             .kadria-native-pane :global(header), .kadria-native-pane :global(footer) { background: #fff !important; border-color: #e2e8f0 !important; }
             .kadria-native-pane :global(main) { background: #f8fafc !important; }
             .kadria-native-pane :global([class*="bg-[#17"]), .kadria-native-pane :global([class*="bg-[#0f"]), .kadria-native-pane :global([class*="bg-[#10"]), .kadria-native-pane :global([class*="bg-[#11"]) { background: #fff !important; border-color: #e2e8f0 !important; }
             .kadria-native-pane :global([class*="text-[#f8"]), .kadria-native-pane :global([class*="text-[#cb"]), .kadria-native-pane :global([class*="text-[#9c"]) { color: #334155 !important; }
             .kadria-native-pane :global([class*="bg-[#22c55e]"]) { background: #059669 !important; color: #fff !important; }
-          `}</style>}
+          `}</style>
           {/* Fond opaque plein écran sur mobile (pas de scrim transparent comme fond principal). */}
           {!integratedDesktop && <div className="absolute inset-0 bg-[#050505] sm:hidden" />}
           {!integratedDesktop && <div
@@ -689,21 +690,19 @@ export default function KadriaAssistantWidget() {
             aria-hidden="true"
           />}
           <section
-            className={integratedDesktop ? 'flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-white text-slate-900' : `relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-[#050505] text-[#f8fafc] shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[rgba(255,255,255,0.08)] ${
+            className={integratedDesktop ? 'kadria-native-pane flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-white text-slate-900' : `kadria-native-pane relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-white text-slate-900 shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-slate-200 ${
               drawerVisible ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
-          <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[rgba(255,255,255,0.08)] bg-[#101113] px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
-            <div className="min-w-0">
+          <header className="flex shrink-0 items-start justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
+            <div className="flex min-w-0 items-start gap-2.5">
+              <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><Sparkles className="size-4" /></span>
+              <div>
               <h2 className="text-[17px] font-semibold leading-tight text-slate-950">Kadria</h2>
               <p className="mt-0.5 text-[13px] leading-snug text-[#9ca3af]">
-                Je vous aide à avancer sur vos dossiers.
+                Votre collaborateur numérique
               </p>
-              {usage && (
-                <p className="mt-1 text-[11px] leading-snug text-[#6b7280]">
-                  {usage.used} / {usage.limit} questions ce mois-ci
-                </p>
-              )}
+              </div>
             </div>
             <div className="flex shrink-0 items-start gap-1">
               <button
@@ -727,17 +726,18 @@ export default function KadriaAssistantWidget() {
           </header>
 
           <main ref={scrollRef} className="min-h-0 w-full max-w-full flex-1 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50 px-4 py-4">
+            <section className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-xs font-medium text-slate-500">Contexte</p><p className="mt-1 text-sm font-semibold text-slate-900">{contextTitle}</p><p className="mt-1 text-xs text-slate-500">Actions adaptées à votre page actuelle.</p></section>
             {messages.length === 0 && (
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-[#f8fafc]">
-                    Bonjour, que souhaitez-vous faire ?
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Actions pour cette page
                   </h3>
-                  <p className="text-xs leading-relaxed text-[#9ca3af]">
-                    Je peux vous aider à retrouver un dossier, voir vos priorités ou préparer une action.
+                  <p className="text-xs leading-relaxed text-slate-500">
+                    Utilisez une action ou posez directement votre question.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0f1115] p-3.5">
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-[#f8fafc]">À faire aujourd’hui</p>
@@ -767,7 +767,7 @@ export default function KadriaAssistantWidget() {
                   {!todayActionsLoading && !todayActionsError && todayActions.length > 0 && renderTodayActionCards(todayActions.slice(0, 3))}
                 </div>
                 <div className="grid grid-cols-1 gap-1.5">
-                  {contextualSuggestions.map((suggestion) => (
+                  {visibleSuggestions.map((suggestion) => (
                     <button
                       key={suggestion.id}
                       type="button"
@@ -872,8 +872,9 @@ export default function KadriaAssistantWidget() {
             )}
           </main>
 
+          {messages.length > 0 && <div className="border-t border-slate-200 bg-white px-3 pt-3"><button type="button" onClick={clearConversation} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"><Trash2 className="size-3.5" />Effacer la conversation</button></div>}
           <footer
-            className="w-full max-w-full shrink-0 border-t border-[rgba(255,255,255,0.08)] bg-[#101113] px-3 py-3"
+            className="w-full max-w-full shrink-0 border-t border-slate-200 bg-white px-3 py-3"
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <form onSubmit={handleSubmit} className="flex w-full max-w-full items-center gap-2">

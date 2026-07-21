@@ -21,4 +21,11 @@ describe('collaborator structure', () => {
     ]
     for (const file of files) expect(readFileSync(path.join(root, file), 'utf8')).not.toContain('document.querySelector')
   })
+
+  it('keeps contextual actions compact and lets the user clear local history', () => {
+    const widget = readFileSync(path.join(root, 'src/components/kadria-assistant/KadriaAssistantWidget.tsx'), 'utf8')
+    expect(widget).toContain('contextualSuggestions.slice(0, 4)')
+    expect(widget).toContain('Effacer la conversation')
+    expect(widget).toContain("sessionStorage.removeItem(SESSION_STORAGE_KEY)")
+  })
 })
