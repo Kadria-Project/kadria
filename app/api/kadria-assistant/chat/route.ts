@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
-import { buildArtisanAssistantContext, getAssistantPriorities, type KadriaAssistantContext } from '@/src/lib/kadria-assistant/context'
+import { buildArtisanAssistantContext, type KadriaAssistantContext } from '@/src/lib/kadria-assistant/context'
 import { getKadriaAssistantOpenAIClient, KADRIA_ASSISTANT_MODEL } from '@/src/lib/kadria-assistant/openai-client'
+import { requestOpenAiFallback } from '@/src/lib/kadria-assistant/openai-fallback'
+import { unavailableAssistantResponse } from '@/src/lib/kadria-assistant/openai-response'
 import { sanitizeAssistantPageContext, type AssistantPageContext } from '@/src/lib/kadria-assistant/page-context'
 import { canUseKadriaAssistant, recordKadriaAssistantUsage } from '@/src/lib/kadria-assistant/quotas'
 import { buildKadriaAssistantSystemPrompt } from '@/src/lib/kadria-assistant/system-prompt'
@@ -21,7 +23,6 @@ import type { PerformancePeriodKey } from '@/src/lib/performance/performance-typ
 import type { AssistantResponse } from '@/src/lib/kadria-assistant/assistant-response'
 import { withServerSuggestions } from '@/src/lib/kadria-assistant/server-suggestions'
 import {
-  formatProjectSummaryForAssistant,
   getProjectSummaryForAssistant,
   listProjectsWithDepositPaidForAssistant,
   listProjectsWithoutAppointmentForAssistant,
@@ -130,57 +131,6 @@ function buildDeterministicReply(userQuestion: string, context: KadriaAssistantC
   return null
 }
 
-function buildNavigationActions(userQuestion: string, context: KadriaAssistantContext): NavigationAction[] | undefined {
-  const text = normalizeText(userQuestion)
-  const actions: NavigationAction[] = []
-
-  const addOnce = (action: NavigationAction) => {
-    if (!actions.some((entry) => entry.href === action.href)) actions.push(action)
-  }
-
-  if (/metier|prestation|specialite|question/.test(text)) {
-    addOnce({ label: 'Ouvrir Profil metier', href: '/parametres/profil-metier' })
-  }
-  if (/tarif|prix|devis/.test(text)) {
-    addOnce({ label: 'Ouvrir Profil metier', href: '/parametres/profil-metier' })
-  }
-  if (/marque blanche/.test(text)) {
-    addOnce({ label: 'Ouvrir Marque blanche', href: '/parametres?section=widget' })
-  } else if (/widget|avatar|logo|couleur|accueil/.test(text)) {
-    addOnce({ label: 'Ouvrir Mon widget', href: '/parametres?section=widget' })
-  }
-  if (/quota/.test(text)) {
-    addOnce({ label: 'Ouvrir Offre / Quotas', href: '/parametres?section=quotas' })
-  } else if (/abonnement|offre|plan/.test(text)) {
-    addOnce({ label: 'Ouvrir Offre / Quotas', href: '/parametres?section=offre' })
-  }
-  if (/progression|optimiser|priorite|etape|conseille/.test(text)) {
-    addOnce({ label: 'Ouvrir le Centre de progression', href: '/dashboard-v2' })
-  }
-  if (/relance|prospect|convert/.test(text)) {
-    addOnce({ label: 'Ouvrir mon tableau de bord', href: '/dashboard-v2' })
-  }
-  if (/parametre|general/.test(text)) {
-    addOnce({ label: 'Ouvrir Parametres', href: '/parametres' })
-  }
-
-  if (actions.length === 0) {
-    const priorities = getAssistantPriorities(context)
-    const destinationToAction: Record<string, NavigationAction> = {
-      'Profil métier': { label: 'Ouvrir Profil metier', href: '/parametres/profil-metier' },
-      'Mon widget': { label: 'Ouvrir Mon widget', href: '/parametres?section=widget' },
-      'Paramètres': { label: 'Ouvrir Parametres', href: '/parametres' },
-      'Tableau de bord': { label: 'Ouvrir mon tableau de bord', href: '/dashboard-v2' },
-    }
-    for (const priority of priorities) {
-      const action = destinationToAction[priority.destination]
-      if (action) addOnce(action)
-    }
-  }
-
-  return actions.length > 0 ? actions : undefined
-}
-
 function sanitizeMessages(raw: unknown): { role: 'user' | 'assistant'; content: string }[] {
   if (!Array.isArray(raw)) return []
 
@@ -191,22 +141,6 @@ function sanitizeMessages(raw: unknown): { role: 'user' | 'assistant'; content: 
       content: message.content.slice(0, MAX_MESSAGE_LENGTH),
     }))
     .slice(-MAX_HISTORY_MESSAGES)
-}
-
-function buildPageContextSummary(pageContext: AssistantPageContext | null, currentProjectSummary: AssistantProjectSummary | null) {
-  if (!pageContext) return null
-
-  const lines = [`Type de page : ${pageContext.pageType}`]
-  if (pageContext.route) lines.push(`Route normalisee : ${pageContext.route}`)
-  if (pageContext.section) lines.push(`Section active : ${pageContext.section}`)
-  if (pageContext.projectId) lines.push(`ProjectId transmis par le front : ${pageContext.projectId}`)
-  if (pageContext.projectTitle) lines.push(`Titre visible : ${pageContext.projectTitle}`)
-  if (pageContext.clientName) lines.push(`Client visible : ${pageContext.clientName}`)
-  if (pageContext.status) lines.push(`Statut visible : ${pageContext.status}`)
-  if (pageContext.lifecycleStage) lines.push(`Etape visible : ${pageContext.lifecycleStage}`)
-  if (pageContext.recommendedAction) lines.push(`Action recommandee visible : ${pageContext.recommendedAction}`)
-  if (currentProjectSummary) lines.push(`Projet serveur verifie : ${currentProjectSummary.projectTitle}`)
-  return lines.join('\n')
 }
 
 function extractSearchQuery(message: string) {
@@ -651,41 +585,41 @@ export async function POST(request: NextRequest) {
     try {
       client = getKadriaAssistantOpenAIClient()
     } catch {
-      console.error('[KADRIA-ASSISTANT] OPENAI_API_KEY manquante')
+      const assistantResponse = unavailableAssistantResponse()
+      console.info('[KADRIA-ORCHESTRATOR]', { branch: 'openai_fallback', outcome: 'provider', structuredOutput: true, attempts: 0, durationMs: Date.now() - startedAt, success: false })
       return NextResponse.json(
-        { success: false, error: "L'assistant est temporairement indisponible. Merci de reessayer plus tard." },
-        { status: 503 },
+        { success: true, answer: assistantResponse.summary, assistantResponse, usage: null },
       )
     }
 
-    const systemPrompt = buildKadriaAssistantSystemPrompt(context, {
-      pageContextSummary: buildPageContextSummary(pageContext, currentProjectSummary),
-      currentProjectSummary: currentProjectSummary ? formatProjectSummaryForAssistant(currentProjectSummary) : null,
-    })
-
-    const response = await client.chat.completions.create({
+    const systemPrompt = buildKadriaAssistantSystemPrompt(context, { pageContext })
+    const openAiMessages = messages.slice(-4).map((message) => ({
+      role: message.role,
+      content: message.content.slice(0, 500),
+    }))
+    const openAiResult = await requestOpenAiFallback(client, {
       model: KADRIA_ASSISTANT_MODEL,
-      max_tokens: 700,
-      temperature: 0.4,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages,
-      ],
+      systemPrompt,
+      messages: openAiMessages,
     })
 
-    const answer = response.choices?.[0]?.message?.content?.trim() || ''
-
-    if (!answer) {
-      console.error('[KADRIA-ASSISTANT] Reponse vide de OpenAI', { artisanId: artisanIdForLog })
-      return NextResponse.json(
-        { success: false, error: "L'assistant n'a pas pu generer de reponse. Merci de reformuler votre question." },
-        { status: 502 },
-      )
+    if (openAiResult.kind !== 'success') {
+      const assistantResponse = unavailableAssistantResponse()
+      console.info('[KADRIA-ORCHESTRATOR]', { branch: 'openai_fallback', outcome: openAiResult.kind, structuredOutput: true, attempts: openAiResult.attempts, durationMs: Date.now() - startedAt, success: false, validation: openAiResult.kind === 'validation' ? 'failed' : 'not_applicable' })
+      return NextResponse.json({ success: true, answer: assistantResponse.summary, assistantResponse, usage: null })
     }
 
-    console.info('[KADRIA-ASSISTANT] success', {
-      artisanId: artisanIdForLog,
+    const assistantResponse = openAiResult.response
+    console.info('[KADRIA-ORCHESTRATOR]', {
+      branch: 'openai_fallback',
+      model: KADRIA_ASSISTANT_MODEL,
+      structuredOutput: true,
+      attempts: openAiResult.attempts,
       durationMs: Date.now() - startedAt,
+      success: true,
+      validation: 'passed',
+      detailCount: assistantResponse.details?.length || 0,
+      hasFollowUp: Boolean(assistantResponse.followUp),
     })
 
     const incrementResult = await recordKadriaAssistantUsage(session.artisanId)
@@ -696,20 +630,11 @@ export async function POST(request: NextRequest) {
       limit: quotaCheck.limit,
     }
 
-    const navigationActions = buildNavigationActions(lastUserMessage, context)
-
-    const assistantResponse: AssistantResponse = {
-      summary: answer,
-      evidence: { level: 'limited', note: 'Réponse conversationnelle : vérifiez les informations importantes.' },
-      ...(navigationActions ? { actions: navigationActions.map((action) => ({ kind: 'navigate' as const, ...action })) } : {}),
-    }
     return NextResponse.json({
       success: true,
-      answer,
+      answer: assistantResponse.summary,
       assistantResponse,
       usage,
-      ...(navigationActions ? { navigationActions } : {}),
-      ...(proposedAction ? { proposedAction } : {}),
     })
   } catch (error) {
     const isQuotaOrTimeout = error instanceof Error && /timeout|quota|rate limit|429/i.test(error.message)

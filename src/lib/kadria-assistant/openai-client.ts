@@ -10,7 +10,7 @@ export function getKadriaAssistantOpenAIClient(): OpenAI {
   if (!apiKey) {
     throw new Error('MISSING_OPENAI_API_KEY')
   }
-  return new OpenAI({ apiKey })
+  return new OpenAI({ apiKey, maxRetries: 0, timeout: 10_000 })
 }
 
 export const KADRIA_ASSISTANT_MODEL = 'gpt-4o-mini'

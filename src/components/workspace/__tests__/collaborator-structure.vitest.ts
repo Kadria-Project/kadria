@@ -28,4 +28,12 @@ describe('collaborator structure', () => {
     expect(widget).toContain('Effacer la conversation')
     expect(widget).toContain("sessionStorage.removeItem(SESSION_STORAGE_KEY)")
   })
+
+  it('renders canonical assistant response metadata without an OpenAI-specific branch', () => {
+    const widget = readFileSync(path.join(root, 'src/components/kadria-assistant/KadriaAssistantWidget.tsx'), 'utf8')
+    expect(widget).toContain('assistantTitle')
+    expect(widget).toContain('assistantEvidence')
+    expect(widget).toContain('assistantFollowUp')
+    expect(widget).not.toContain('openaiResponse')
+  })
 })

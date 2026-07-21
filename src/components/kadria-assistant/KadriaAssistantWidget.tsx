@@ -6,7 +6,7 @@ import type { AssistantPageContext } from '@/src/lib/kadria-assistant/page-conte
 import { toKadriaAssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
 import { getCollaboratorSuggestions, type CollaboratorSuggestion } from '@/src/lib/kadria-assistant/collaborator-suggestions';
 import type { AssistantIntent } from '@/src/lib/kadria-assistant/assistant-intents';
-import type { AssistantResponseDetail, AssistantSuggestion } from '@/src/lib/kadria-assistant/assistant-response';
+import type { AssistantResponse, AssistantResponseDetail, AssistantSuggestion } from '@/src/lib/kadria-assistant/assistant-response';
 import type { AssistantUiAction } from '@/src/lib/kadria-assistant/assistant-action-contract';
 import { useShellContext } from '@/src/components/workspace/shell/ShellContextProvider';
 import { SHELL_OVERLAY_LAYERS } from '@/src/components/workspace/shell/shell-context';
@@ -53,8 +53,11 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   navigationActions?: NavigationAction[];
+  assistantTitle?: string;
   assistantDetails?: AssistantResponseDetail[];
   assistantSuggestions?: AssistantSuggestion[];
+  assistantEvidence?: AssistantResponse['evidence'];
+  assistantFollowUp?: string;
   todayActions?: TodayActionCard[];
   proposedAction?: ProposedAction;
   proposedActionState?: ProposedActionState;
@@ -424,6 +427,12 @@ export default function KadriaAssistantWidget() {
       const assistantSuggestions: AssistantSuggestion[] | undefined = Array.isArray(data?.assistantResponse?.suggestions)
         ? data.assistantResponse.suggestions as AssistantSuggestion[]
         : undefined;
+      const assistantTitle = typeof data?.assistantResponse?.title === 'string' ? data.assistantResponse.title : undefined;
+      const assistantEvidence: AssistantResponse['evidence'] | undefined = data?.assistantResponse?.evidence && typeof data.assistantResponse.evidence === 'object'
+        && typeof data.assistantResponse.evidence.level === 'string'
+        ? data.assistantResponse.evidence as AssistantResponse['evidence']
+        : undefined;
+      const assistantFollowUp = typeof data?.assistantResponse?.followUp === 'string' ? data.assistantResponse.followUp : undefined;
 
       setMessages((prev) => [
         ...prev,
@@ -431,8 +440,11 @@ export default function KadriaAssistantWidget() {
           role: 'assistant',
           content: data.answer,
           navigationActions,
+          assistantTitle,
           assistantDetails,
           assistantSuggestions,
+          assistantEvidence,
+          assistantFollowUp,
           proposedAction,
           proposedActionState: proposedAction ? 'pending' : undefined,
         },
@@ -815,6 +827,7 @@ export default function KadriaAssistantWidget() {
                       : 'border border-[rgba(255,255,255,0.08)] bg-[#17181b] text-[#f8fafc]'
                   }`}
                 >
+                  {m.role === 'assistant' && m.assistantTitle && <p className="mb-1 font-semibold text-[#f8fafc]">{m.assistantTitle}</p>}
                   {renderMessageContent(m.content)}
                 </div>
                 {m.role === 'assistant' && m.todayActions && m.todayActions.length > 0 && (
@@ -826,6 +839,12 @@ export default function KadriaAssistantWidget() {
                   <div className="mt-2 w-full max-w-[85%] space-y-1.5">
                     {m.assistantDetails.map((detail) => <div key={detail.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"><p className="font-semibold text-slate-900">{detail.label}</p><p className="mt-0.5">{detail.value}</p>{detail.meta && <p className="mt-1 text-slate-500">{detail.meta}</p>}</div>)}
                   </div>
+                )}
+                {m.role === 'assistant' && m.assistantEvidence && (
+                  <p className="mt-2 max-w-[85%] text-xs text-[#9ca3af]">Niveau de preuve : {m.assistantEvidence.level}{m.assistantEvidence.note ? ` — ${m.assistantEvidence.note}` : ''}</p>
+                )}
+                {m.role === 'assistant' && m.assistantFollowUp && (
+                  <p className="mt-1 max-w-[85%] text-xs text-[#cbd5e1]">{m.assistantFollowUp}</p>
                 )}
                 {m.role === 'assistant' && m.navigationActions && m.navigationActions.length > 0 && (
                   <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5">
