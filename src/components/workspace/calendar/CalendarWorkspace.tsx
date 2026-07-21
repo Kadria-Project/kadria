@@ -61,6 +61,7 @@ export default function CalendarWorkspace() {
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const createSubmissionRef = useRef(false);
+  const createTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [qualificationAvailable, setQualificationAvailable] = useState(false);
@@ -274,8 +275,10 @@ export default function CalendarWorkspace() {
     }
     setSelectedEvent(event);
   };
-  const openCreate = useCallback((assignedUserId?: string, project?: AppointmentProjectOption | null) => {
-    const now = new Date();
+  const openCreate = useCallback((assignedUserId?: string, project?: AppointmentProjectOption | null, date?: Date, trigger?: HTMLButtonElement, suggestedStart?: Date) => {
+    const now = suggestedStart ? new Date(suggestedStart) : date ? new Date(date) : new Date();
+    if (date && !suggestedStart) now.setHours(7, 0, 0, 0);
+    createTriggerRef.current = trigger || null;
     setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: project ? [project.siteAddress, project.city].filter(Boolean).join(', ') : '', description: '', clientName: project ? [project.clientFirstName, project.clientName].filter(Boolean).join(' ') : '', clientEmail: project?.clientEmail || '', clientPhone: project?.clientPhone || '', projectId: project?.id || null, assignedUserId: assignedUserId || currentUserId || '', eventType: 'appointment' });
     setSelectedProject(project || null);
     setCreateError(null);
@@ -287,6 +290,7 @@ export default function CalendarWorkspace() {
   const closeCreate = () => {
     if (creating) return;
     setCreateOpen(false);
+    window.setTimeout(() => createTriggerRef.current?.focus(), 0);
     // The URL is a one-shot command from the shell. Consume it before the
     // dialog closes so a subsequent render cannot reopen the form.
     if (quickCreateRequested) router.replace(consumeAppointmentQuickCreateRoute());
@@ -576,7 +580,7 @@ export default function CalendarWorkspace() {
        </div>
        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-4">
-           {planningMode === 'team' && teamPlanningAvailable ? <TeamScheduleTimeline view={view} selectedDate={selectedDate} events={events.filter((event) => event.source === 'kadria-appointment')} members={teamMembers} selectedMemberIds={selectedTeamMemberIds} onToggleMember={(memberId) => setSelectedTeamMemberIds((current) => current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId])} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onDaySelect={setSelectedDate} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} onMoveEvent={(event, start, assignedUserId) => void handleTeamMoveEvent(event, start, assignedUserId)} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} /> : <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />}
+           {planningMode === 'team' && teamPlanningAvailable ? <TeamScheduleTimeline view={view} selectedDate={selectedDate} events={events.filter((event) => event.source === 'kadria-appointment')} members={teamMembers} selectedMemberIds={selectedTeamMemberIds} onToggleMember={(memberId) => setSelectedTeamMemberIds((current) => current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId])} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onDaySelect={setSelectedDate} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} onMoveEvent={(event, start, assignedUserId) => void handleTeamMoveEvent(event, start, assignedUserId)} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} /> : <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={(day, trigger, suggestedStart) => openCreate(undefined, undefined, day, trigger, suggestedStart)} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />}
         </div>
          <aside className="self-start space-y-3 xl:sticky xl:top-4">
             <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} />

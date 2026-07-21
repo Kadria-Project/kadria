@@ -42,7 +42,7 @@ type ScheduleTimelineProps = {
   onToday: () => void;
   onViewChange: (view: CalendarView) => void;
   onOpenEvent: (event: NormalizedCalendarEvent) => void;
-  onCreate: () => void;
+  onCreate: (day?: Date, trigger?: HTMLButtonElement, suggestedStart?: Date) => void;
   qualificationAvailable: boolean;
   workStartTime: string | null;
   workEndTime: string | null;
@@ -268,6 +268,16 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
     if (days.some((day) => isSameDay(day, now))) scrollToNow();
     else { requestedNowRef.current = true; onToday(); }
   };
+  const suggestedStartForDay = (day: Date) => {
+    const dayEvents = visibleTimed.filter((event) => { const date = eventDate(event); return date ? isSameDay(date, day) : false; });
+    for (let minutes = range.startMinutes; minutes <= range.endMinutes - 60; minutes += CALENDAR_SLOT_MINUTES) {
+      const start = new Date(day);
+      start.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+      const end = new Date(start.getTime() + 60 * 60_000);
+      if (!dayEvents.some((event) => { const eventStart = eventDate(event); const eventEnd = event.end ? new Date(event.end) : null; return eventStart && eventEnd && eventStart < end && eventEnd > start; })) return start;
+    }
+    return undefined;
+  };
 
   return (
     <section id="workspace-section-calendar" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)] sm:p-5">
@@ -279,7 +289,7 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
       <div ref={scrollRef} className="mt-4 overflow-x-auto overflow-y-visible pb-1">
         <div className={['grid min-w-[760px]', view === 'jour' ? 'grid-cols-[56px_minmax(0,1fr)]' : 'grid-cols-[56px_repeat(7,minmax(120px,1fr))]'].join(' ')}>
           <div className="sticky left-0 top-0 z-40 border-b border-r border-[#DCE5E2] bg-white" />
-          {days.map((day) => { const isToday = isSameDay(day, now); return <div key={dayKey(day)} className={['sticky top-0 z-30 border-b border-r border-[#DCE5E2] px-2 pb-2 text-center', isToday ? 'bg-[#EDF9F2]' : 'bg-white'].join(' ')}><p className={['text-[10px] font-bold uppercase tracking-wide', isToday ? 'text-emerald-700' : 'text-slate-400'].join(' ')}>{day.toLocaleDateString('fr-FR', { weekday: 'short' })}</p><p className={['mt-1 flex items-center justify-center gap-1 text-sm font-semibold', isToday ? 'text-emerald-950' : 'text-slate-800'].join(' ')}>{day.getDate()}{isToday ? <span className="size-1.5 rounded-full bg-emerald-500" aria-label="Aujourd’hui" /> : null}</p></div>; })}
+          {days.map((day) => { const isToday = isSameDay(day, now); const dateLabel = day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); return <div key={dayKey(day)} className={['sticky top-0 z-30 border-b border-r border-[#DCE5E2] px-2 pb-2 text-center', isToday ? 'bg-[#EDF9F2]' : 'bg-white'].join(' ')}><p className={['text-[10px] font-bold uppercase tracking-wide', isToday ? 'text-emerald-700' : 'text-slate-400'].join(' ')}>{day.toLocaleDateString('fr-FR', { weekday: 'short' })}</p><p className={['mt-1 flex items-center justify-center gap-1 text-sm font-semibold', isToday ? 'text-emerald-950' : 'text-slate-800'].join(' ')}>{day.getDate()}{isToday ? <span className="size-1.5 rounded-full bg-emerald-500" aria-label="Aujourd’hui" /> : null}</p><button type="button" onClick={(event) => onCreate(day, event.currentTarget, suggestedStartForDay(day))} aria-label={`Ajouter un rendez-vous le ${dateLabel}`} className="mt-1.5 inline-flex min-h-8 items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"><Plus className="size-3" aria-hidden="true" />Ajouter un rendez-vous</button></div>; })}
           <div className="sticky left-0 z-20 border-r border-[#DCE5E2] bg-white">{hours.map((hour) => <div key={hour} className="h-[54px] border-b border-[#DCE5E2] pr-2 pt-1 text-right text-[10px] font-medium text-slate-500">{String(hour).padStart(2, '0')}:00</div>)}</div>
           {days.map((day) => {
             const key = dayKey(day);
@@ -304,7 +314,6 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
                 const height = Math.max(42, ((new Date(group.end).getTime() - new Date(group.start).getTime()) / 3_600_000) * CALENDAR_HOUR_HEIGHT);
                 return <button key={group.id} type="button" onClick={() => setOverflow({ label: day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), events: hiddenEvents })} className="absolute z-10 flex items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-2 text-center text-[11px] font-bold text-amber-900 shadow-sm hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600" style={{ top, height, left: 'calc(75% + 4px)', width: 'calc(25% - 8px)' }} aria-label={`Voir ${hiddenEvents.length} rendez-vous supplémentaires en conflit`} title={`${hiddenEvents.length} rendez-vous supplémentaires`}>+{hiddenEvents.length}</button>;
               })}
-              {!dayEvents.length ? <button type="button" onClick={onCreate} className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-lg border border-dashed border-emerald-200 bg-white/90 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"><Plus className="size-3.5" />Ajouter un créneau</button> : null}
             </div>;
           })}
         </div>
