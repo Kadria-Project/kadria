@@ -673,7 +673,14 @@ export default function KadriaAssistantWidget() {
         <MessageCircle className="relative h-6 w-6 text-[#22c55e] sm:h-6 sm:w-6" strokeWidth={2} />
       </button> */}
 
-        <div className={integratedDesktop ? 'flex h-full w-[clamp(360px,28vw,420px)] shrink-0 border-l border-slate-200 bg-[#050505]' : 'fixed inset-0'} style={integratedDesktop ? undefined : { zIndex: SHELL_OVERLAY_LAYERS.dialog }}>
+        <div className={integratedDesktop ? 'kadria-native-pane flex h-full w-[clamp(360px,28vw,420px)] shrink-0 border-l border-slate-200 bg-white' : 'fixed inset-0'} style={integratedDesktop ? undefined : { zIndex: SHELL_OVERLAY_LAYERS.dialog }}>
+          {integratedDesktop && <style jsx>{`
+            .kadria-native-pane :global(header), .kadria-native-pane :global(footer) { background: #fff !important; border-color: #e2e8f0 !important; }
+            .kadria-native-pane :global(main) { background: #f8fafc !important; }
+            .kadria-native-pane :global([class*="bg-[#17"]), .kadria-native-pane :global([class*="bg-[#0f"]), .kadria-native-pane :global([class*="bg-[#10"]), .kadria-native-pane :global([class*="bg-[#11"]) { background: #fff !important; border-color: #e2e8f0 !important; }
+            .kadria-native-pane :global([class*="text-[#f8"]), .kadria-native-pane :global([class*="text-[#cb"]), .kadria-native-pane :global([class*="text-[#9c"]) { color: #334155 !important; }
+            .kadria-native-pane :global([class*="bg-[#22c55e]"]) { background: #059669 !important; color: #fff !important; }
+          `}</style>}
           {/* Fond opaque plein écran sur mobile (pas de scrim transparent comme fond principal). */}
           {!integratedDesktop && <div className="absolute inset-0 bg-[#050505] sm:hidden" />}
           {!integratedDesktop && <div
@@ -682,7 +689,7 @@ export default function KadriaAssistantWidget() {
             aria-hidden="true"
           />}
           <section
-            className={integratedDesktop ? 'flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-[#050505] text-[#f8fafc]' : `relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-[#050505] text-[#f8fafc] shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[rgba(255,255,255,0.08)] ${
+            className={integratedDesktop ? 'flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-white text-slate-900' : `relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-[#050505] text-[#f8fafc] shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[rgba(255,255,255,0.08)] ${
               drawerVisible ? 'translate-x-0' : 'translate-x-full'
             }`}
           >

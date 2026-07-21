@@ -9,7 +9,7 @@ describe('collaborator suggestions', () => {
     const project = getCollaboratorSuggestions(getShellContextFromPathname('/dashboard-v2/projet/project-1'))
     expect(project.map((item) => item.id)).toContain('create-quote')
     expect(getCollaboratorSuggestions(getShellContextFromPathname('/dashboard-v2/performance')).map((item) => item.id)).toContain('period')
-    expect(getCollaboratorSuggestions(getShellContextFromPathname('/parametres/automatisations')).map((item) => item.id)).toContain('configure')
+    expect(getCollaboratorSuggestions(getShellContextFromPathname('/parametres/automatisations')).map((item) => item.id)).toContain('automations')
   })
 
   it('never exposes a quote action outside a project', () => {

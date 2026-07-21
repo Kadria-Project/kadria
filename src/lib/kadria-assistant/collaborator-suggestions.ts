@@ -18,11 +18,16 @@ export function getCollaboratorSuggestions(context: ShellContextValue): Collabor
   ]
   if (context.pageType === 'tasks') return [prompt('first', 'Que traiter en premier ?'), prompt('late', 'Résumer les actions en retard'), prompt('urgent', 'Ouvrir le dossier le plus urgent')]
   if (context.pageType === 'tracking') return [prompt('followups', 'Quels dossiers relancer ?'), prompt('blocked', 'Quels dossiers sont bloqués ?'), prompt('summary', 'Résumer mon suivi')]
-  if (context.pageType === 'calendar') return [prompt('day', 'Préparer ma journée'), ...(can.createAppointment ? [{ id: 'create-appointment', label: 'Créer un rendez-vous', kind: 'quick-create' as const, action: 'appointment' as const }] : []), prompt('confirm', 'Quels rendez-vous confirmer ?')]
+  if (context.pageType === 'calendar') return [prompt('confirm', 'Rendez-vous à confirmer'), prompt('day', 'Préparer ma journée'), prompt('availability', 'Trouver un créneau disponible'), ...(can.createAppointment ? [{ id: 'create-appointment', label: 'Créer un rendez-vous', kind: 'quick-create' as const, action: 'appointment' as const }] : [])]
   if (context.pageType === 'clients') return [{ id: 'find-client', label: 'Retrouver un client', kind: 'search' }, prompt('inactive-clients', 'Quels clients n’ont plus de suivi ?')]
   if (context.pageType === 'project') return [prompt('summary', 'Résumer le dossier'), prompt('missing', 'Que manque-t-il ?'), prompt('next', 'Quelle est la prochaine action ?'), ...(can.createAppointment ? [{ id: 'create-appointment', label: 'Créer un rendez-vous', kind: 'quick-create' as const, action: 'appointment' as const }] : []), ...(can.createQuote ? [{ id: 'create-quote', label: 'Créer un devis', kind: 'quick-create' as const, action: 'quote' as const }] : [])]
-  if (context.pageType === 'performance') return [prompt('period', 'Résumer la période'), prompt('evolution', 'Qu’est-ce qui évolue ?'), prompt('drivers', 'Quels dossiers expliquent cette variation ?')]
-  if (context.pageType === 'settings') return [prompt('configure', 'M’aider à configurer cette section'), prompt('missing-settings', 'Quel réglage manque ?'), prompt('where', 'Où modifier ce réglage ?')]
+  if (context.pageType === 'performance') return [prompt('period', 'Résumer la période'), prompt('evolution', 'Expliquer les évolutions'), prompt('drivers', 'Quels dossiers pèsent sur les résultats ?')]
+  if (context.pageType === 'settings') {
+    if (context.section === 'automatisations') return [prompt('automations', 'Quelles automatisations activer ?'), prompt('rules', 'Vérifier mes règles')]
+    if (context.section === 'connexions') return [prompt('connections', 'Vérifier mes connexions'), prompt('connect', 'M’aider à connecter un service')]
+    if (context.section === 'activite') return [prompt('area', 'Vérifier ma zone d’intervention'), prompt('services', 'M’aider à configurer mes services')]
+    return [prompt('details', 'Vérifier mes informations'), prompt('missing-settings', 'Que manque-t-il ?')]
+  }
   if (context.pageType === 'resources') return [prompt('help', 'Comment utiliser cette ressource ?')]
   return [prompt('help', 'Comment pouvez-vous m’aider ?')]
 }
