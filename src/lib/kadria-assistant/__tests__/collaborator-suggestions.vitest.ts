@@ -11,6 +11,7 @@ describe('collaborator suggestions', () => {
     expect(getCollaboratorSuggestions(getShellContextFromPathname('/dashboard-v2/performance')).map((item) => item.id)).toContain('period')
     expect(getCollaboratorSuggestions(getShellContextFromPathname('/parametres/automatisations')).map((item) => item.id)).toContain('automations')
     expect(getCollaboratorSuggestions(getShellContextFromPathname('/dashboard-v2/suivi')).map((item) => item.id)).toEqual(['blocked', 'followups', 'next-actions'])
+    expect(getCollaboratorSuggestions(getShellContextFromPathname('/dashboard-v2/performance')).map((item) => item.id)).toEqual(['period', 'evolution', 'drivers'])
   })
 
   it('never exposes a quote action outside a project', () => {

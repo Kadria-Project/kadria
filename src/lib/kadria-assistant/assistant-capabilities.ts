@@ -59,9 +59,9 @@ export const ASSISTANT_CAPABILITIES: readonly AssistantCapability[] = [
     intents: ['performance.summary', 'performance.explain_change', 'performance.contributing_projects'],
     allowedPageTypes: ['performance'],
     permission: 'performance.read',
-    responseMode: 'data_with_openai',
-    status: 'planned',
-    executor: 'getPerformanceInsights',
+    responseMode: 'deterministic',
+    status: 'available',
+    executor: 'getPerformanceDataForAssistant',
   },
 ]
 

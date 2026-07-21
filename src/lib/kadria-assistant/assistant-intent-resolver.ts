@@ -17,6 +17,11 @@ function resolveMessageIntent(request: Extract<AssistantRequest, { kind: 'messag
     if (/relanc/.test(message)) return 'tracking.followups'
     if (/sans prochaine action|aucune prochaine action|sans rappel/.test(message)) return 'tracking.next_actions'
   }
+  if (request.context.pageType === 'performance') {
+    if (/compose|contribu|devis.*accept/.test(message)) return 'performance.contributing_projects'
+    if (/pourquoi|explique|hausse|baisse|variation/.test(message)) return 'performance.explain_change'
+    if (/resum|resume|performance|chiffre d'affaires/.test(message)) return 'performance.summary'
+  }
   if (request.context.pageType === 'project_detail') {
     if (/resum|resume/.test(message)) return 'project.summary'
     if (/manqu|complet|information/.test(message)) return 'project.missing_information'

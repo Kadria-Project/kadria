@@ -27,7 +27,11 @@ export function getCollaboratorSuggestions(context: ShellContextValue): Collabor
   if (context.pageType === 'calendar') return [prompt('confirm', 'Rendez-vous à confirmer'), prompt('day', 'Préparer ma journée'), prompt('availability', 'Trouver un créneau disponible'), ...(can.createAppointment ? [{ id: 'create-appointment', label: 'Créer un rendez-vous', kind: 'quick-create' as const, action: 'appointment' as const }] : [])]
   if (context.pageType === 'clients') return [{ id: 'find-client', label: 'Retrouver un client', kind: 'search' }, prompt('inactive-clients', 'Quels clients n’ont plus de suivi ?')]
   if (context.pageType === 'project') return [prompt('summary', 'Résumer le dossier'), prompt('missing', 'Que manque-t-il ?'), prompt('next', 'Quelle est la prochaine action ?'), ...(can.createAppointment ? [{ id: 'create-appointment', label: 'Créer un rendez-vous', kind: 'quick-create' as const, action: 'appointment' as const }] : []), ...(can.createQuote ? [{ id: 'create-quote', label: 'Créer un devis', kind: 'quick-create' as const, action: 'quote' as const }] : [])]
-  if (context.pageType === 'performance') return [prompt('period', 'Résumer la période'), prompt('evolution', 'Expliquer les évolutions'), prompt('drivers', 'Quels dossiers pèsent sur les résultats ?')]
+  if (context.pageType === 'performance') return [
+    { id: 'period', label: 'Résumer', kind: 'intent', intent: 'performance.summary' },
+    { id: 'evolution', label: 'Expliquer', kind: 'intent', intent: 'performance.explain_change' },
+    { id: 'drivers', label: 'Contributeurs', kind: 'intent', intent: 'performance.contributing_projects' },
+  ]
   if (context.pageType === 'settings') {
     if (context.section === 'automatisations') return [prompt('automations', 'Quelles automatisations activer ?'), prompt('rules', 'Vérifier mes règles')]
     if (context.section === 'connexions') return [prompt('connections', 'Vérifier mes connexions'), prompt('connect', 'M’aider à connecter un service')]

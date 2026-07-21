@@ -14,6 +14,9 @@ import { isAssistantIntent } from '@/src/lib/kadria-assistant/assistant-intents'
 import { resolveAssistantIntent } from '@/src/lib/kadria-assistant/assistant-intent-resolver'
 import { getTrackingBriefForAssistant } from '@/src/lib/kadria-assistant/tracking-tools'
 import { buildTrackingInsightResponse } from '@/src/lib/kadria-assistant/tracking-insights'
+import { getPerformanceDataForAssistant } from '@/src/lib/kadria-assistant/performance-tools'
+import { buildPerformanceAssistantResponse } from '@/src/lib/kadria-assistant/performance-insights'
+import type { PerformancePeriodKey } from '@/src/lib/performance/performance-types'
 import {
   formatProjectSummaryForAssistant,
   getProjectSummaryForAssistant,
@@ -56,6 +59,14 @@ function buildProjectAction(projectId: string, label = 'Ouvrir le dossier'): Nav
 
 function isTrackingIntent(intent: string): intent is 'tracking.blocked_projects' | 'tracking.followups' | 'tracking.next_actions' {
   return intent === 'tracking.blocked_projects' || intent === 'tracking.followups' || intent === 'tracking.next_actions'
+}
+
+function isPerformanceIntent(intent: string): intent is 'performance.summary' | 'performance.explain_change' | 'performance.contributing_projects' {
+  return intent === 'performance.summary' || intent === 'performance.explain_change' || intent === 'performance.contributing_projects'
+}
+
+function performancePeriod(value: unknown): PerformancePeriodKey {
+  return value === 'today' || value === 'yesterday' || value === '7d' || value === '30d' || value === '90d' || value === 'year' || value === 'custom' ? value : '30d'
 }
 
 function normalizeText(value: string) {
@@ -559,6 +570,16 @@ export async function POST(request: NextRequest) {
         usage: null,
         navigationActions: assistantResponse.actions?.filter((action) => action.kind === 'navigate').map((action) => ({ label: action.label, href: action.href })),
       })
+    }
+    if (resolution?.kind === 'capability' && isPerformanceIntent(resolution.intent)) {
+      const period = performancePeriod(resolution.parameters.period)
+      const performance = await getPerformanceDataForAssistant(session, period)
+      if (performance.kind === 'forbidden') {
+        return NextResponse.json({ success: false, error: 'Vous n’avez pas accès aux performances de cette entreprise.' }, { status: 403 })
+      }
+      const assistantResponse = buildPerformanceAssistantResponse(resolution.intent, performance.data)
+      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'performance-insights', period, durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, responseMode: 'deterministic', success: true })
+      return NextResponse.json({ success: true, answer: assistantResponse.summary, assistantResponse, usage: null, navigationActions: assistantResponse.actions?.filter((action) => action.kind === 'navigate').map((action) => ({ label: action.label, href: action.href })) })
     }
     const contextualReply = await buildContextualReadOnlyReply({
       lastUserMessage,
