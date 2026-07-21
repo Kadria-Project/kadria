@@ -28,7 +28,7 @@ function isDashboardMode(value: unknown): value is DashboardMode {
 }
 
 export default function KadriaAppShell({ children }: { children: ReactNode }) {
-  return <WorkspaceNavigationProvider><ShellContextProvider>{process.env.NODE_ENV === 'development' && <DevelopmentWebVitals />}<NavigationPerformanceProbe /><KadriaAppShellLayout>{children}</KadriaAppShellLayout><GlobalSearchDialog /><QuickCreate /><KadriaAssistantWidget /></ShellContextProvider></WorkspaceNavigationProvider>;
+  return <WorkspaceNavigationProvider><ShellContextProvider>{process.env.NODE_ENV === 'development' && <DevelopmentWebVitals />}<NavigationPerformanceProbe /><KadriaAppShellLayout>{children}</KadriaAppShellLayout><GlobalSearchDialog /><QuickCreate /></ShellContextProvider></WorkspaceNavigationProvider>;
 }
 
 function KadriaAppShellLayout({ children }: { children: ReactNode }) {
@@ -156,7 +156,7 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
     return <div aria-busy="true" className="min-h-screen bg-[#f6f8f7]" />;
   }
 
-  if (!desktop) return <div className="min-h-screen bg-[#f6f8f7] pb-16">{children}<KadriaMobileNavigation /></div>;
+  if (!desktop) return <div className="min-h-screen bg-[#f6f8f7] pb-16">{children}<KadriaMobileNavigation /><KadriaAssistantWidget /></div>;
 
   return (
     <div className="kadria-app-shell flex h-screen min-w-0 overflow-hidden bg-[#f6f8f7]">
@@ -165,6 +165,7 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
         <KadriaTopbar />
         <div className="flex min-h-0 flex-1 overflow-hidden"><WorkspaceCanvas ref={canvasRef}>{children}</WorkspaceCanvas></div>
       </div>
+      <KadriaAssistantWidget />
       <style jsx global>{`
         .kadria-app-shell .kadria-workspace-canvas .dashboard-shell { min-height: 0 !important; background: transparent !important; }
         .kadria-app-shell .kadria-workspace-canvas .dashboard-shell > aside { display: none !important; }

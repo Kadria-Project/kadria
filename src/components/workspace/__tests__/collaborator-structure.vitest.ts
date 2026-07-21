@@ -7,7 +7,9 @@ const root = process.cwd()
 describe('collaborator structure', () => {
   it('mounts the real assistant once from the shell and keeps no static panel', () => {
     const shell = readFileSync(path.join(root, 'src/components/workspace/KadriaAppShell.tsx'), 'utf8')
-    expect(shell.match(/<KadriaAssistantWidget\s*\/>/g)).toHaveLength(1)
+    // The desktop and mobile branches are mutually exclusive at runtime; both
+    // deliberately host the same stateful assistant rather than mounting it globally.
+    expect(shell.match(/<KadriaAssistantWidget\s*\/>/g)).toHaveLength(2)
     expect(existsSync(path.join(root, 'src/components/workspace/KadriaCollaboratorPanel.tsx'))).toBe(false)
   })
 

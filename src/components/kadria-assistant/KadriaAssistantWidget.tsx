@@ -209,6 +209,7 @@ export default function KadriaAssistantWidget() {
   const { shellContext, collaboratorOpen: open, collaboratorOptions, closeCollaborator, openQuickCreate, openGlobalSearch } = useShellContext();
   const pageContext = useMemo(() => toKadriaAssistantPageContext(shellContext), [shellContext]);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [integratedDesktop, setIntegratedDesktop] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadPersistedSession()?.messages || []);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -333,6 +334,14 @@ export default function KadriaAssistantWidget() {
   }, [open]);
 
   useEffect(() => {
+    const media = window.matchMedia('(min-width: 1440px)');
+    const update = () => setIntegratedDesktop(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
     if (!open || !collaboratorOptions?.prompt) return;
     void sendMessage(collaboratorOptions.prompt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -349,13 +358,13 @@ export default function KadriaAssistantWidget() {
   // Bloque le scroll de la page derrière le drawer pendant qu'il est ouvert,
   // et restaure la valeur précédente à la fermeture/démontage.
   useEffect(() => {
-    if (!open) return;
+    if (!open || integratedDesktop) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [open]);
+  }, [integratedDesktop, open]);
 
   async function sendMessage(content: string) {
     const trimmed = content.trim();
@@ -664,16 +673,16 @@ export default function KadriaAssistantWidget() {
         <MessageCircle className="relative h-6 w-6 text-[#22c55e] sm:h-6 sm:w-6" strokeWidth={2} />
       </button> */}
 
-        <div className="fixed inset-0" style={{ zIndex: SHELL_OVERLAY_LAYERS.dialog }}>
+        <div className={integratedDesktop ? 'flex h-full w-[clamp(360px,28vw,420px)] shrink-0 border-l border-slate-200 bg-[#050505]' : 'fixed inset-0'} style={integratedDesktop ? undefined : { zIndex: SHELL_OVERLAY_LAYERS.dialog }}>
           {/* Fond opaque plein écran sur mobile (pas de scrim transparent comme fond principal). */}
-          <div className="absolute inset-0 bg-[#050505] sm:hidden" />
-          <div
+          {!integratedDesktop && <div className="absolute inset-0 bg-[#050505] sm:hidden" />}
+          {!integratedDesktop && <div
             className={`absolute inset-0 hidden bg-black/60 transition-opacity duration-200 sm:block ${drawerVisible ? 'opacity-100' : 'opacity-0'}`}
             onClick={closeCollaborator}
             aria-hidden="true"
-          />
+          />}
           <section
-            className={`relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-[#050505] text-[#f8fafc] shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[rgba(255,255,255,0.08)] ${
+            className={integratedDesktop ? 'flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-[#050505] text-[#f8fafc]' : `relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-[#050505] text-[#f8fafc] shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[rgba(255,255,255,0.08)] ${
               drawerVisible ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
