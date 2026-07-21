@@ -244,81 +244,76 @@ export async function GET() {
       })
     })
 
-    const followupCandidates = devisList
-      .map((devis) => ({ devis, state: getQuoteFollowupState(devis) }))
-      .filter(({ state }) => state.canFollowUp && state.stage !== 'none')
+    const quoteRecommendations = devisList
+      .map((devis) => {
+        const state = getQuoteFollowupState(devis)
+        return {
+          devis,
+          state,
+          recommendation: describeQuoteRecommendation({
+            state,
+            hasClientEmail: hasText(devis.clientEmail),
+            lastFollowUpAt: devis.lastFollowUpAt,
+            followUpCount: devis.followUpCount,
+          }),
+        }
+      })
+      .filter((candidate) => candidate.recommendation && candidate.recommendation.lifecycle !== 'resolved')
       .sort((a, b) => {
-        const weightA = a.state.stage === 'j10_final' ? 0 : a.state.stage === 'j5_opened_no_decision' ? 1 : 2
-        const weightB = b.state.stage === 'j10_final' ? 0 : b.state.stage === 'j5_opened_no_decision' ? 1 : 2
+        const weightA = a.recommendation?.lifecycle === 'follow_up_required' || a.recommendation?.lifecycle === 'proposed'
+          ? (a.state.stage === 'j10_final' ? 0 : a.state.stage === 'j5_opened_no_decision' ? 1 : 2)
+          : 3
+        const weightB = b.recommendation?.lifecycle === 'follow_up_required' || b.recommendation?.lifecycle === 'proposed'
+          ? (b.state.stage === 'j10_final' ? 0 : b.state.stage === 'j5_opened_no_decision' ? 1 : 2)
+          : 3
         return weightA - weightB
       })
       .filter(({ devis }, index, candidates) => candidates.findIndex((candidate) => candidate.devis.projectId === devis.projectId) === index)
-      .slice(0, 2)
+      .slice(0, 3)
 
-    followupCandidates.forEach(({ devis, state }) => {
+    quoteRecommendations.forEach(({ devis, state, recommendation }) => {
       const project = projectById.get(devis.projectId)
-      const recommendation = describeQuoteRecommendation({
-        state,
-        hasClientEmail: hasText(devis.clientEmail),
-        lastFollowUpAt: devis.lastFollowUpAt,
-      })
       if (!recommendation) return
-      const isBlocked = recommendation.lifecycle === 'blocked'
+      const needsContactDetails = recommendation.lifecycle === 'inconclusive' && !hasText(devis.clientEmail) && state.canFollowUp
+      const isInformational = recommendation.lifecycle === 'executed' || recommendation.lifecycle === 'observing' || recommendation.lifecycle === 'inconclusive'
       actions.push({
-        id: `quote-followup-${devis.id}`,
+        id: `quote-followup-${recommendation.lifecycle}-${devis.id}`,
         type: 'quote_followup',
-        priority: state.stage === 'j10_final' ? 'high' : 'medium',
-        status: isBlocked ? 'blocked' : 'ready',
+        priority: isInformational ? 'low' : state.stage === 'j10_final' ? 'high' : 'medium',
+        status: needsContactDetails ? 'blocked' : isInformational ? 'observed' : 'ready',
         lifecycle: recommendation.lifecycle,
         expectedObservation: recommendation.expectedObservation,
         executionEvidence: recommendation.executionEvidence,
-        title: isBlocked ? "Compléter l'e-mail client" : 'Relancer un devis',
-        description: isBlocked
+        title: needsContactDetails
+          ? "Compléter l'e-mail client"
+          : recommendation.lifecycle === 'follow_up_required'
+            ? 'Réévaluer le devis'
+            : isInformational
+              ? 'Relance enregistrée'
+              : 'Relancer un devis',
+        description: needsContactDetails
           ? "Complétez l'e-mail client dans le dossier avant de pouvoir envoyer une relance."
+          : recommendation.lifecycle === 'follow_up_required'
+            ? 'La période d’observation est terminée : ouvrez le dossier pour décider de la suite, sans répéter mécaniquement la relance.'
+            : isInformational
+              ? 'Le dossier reste sous observation : aucune relance identique immédiate n’est proposée.'
           : 'La relance se fera depuis la fiche projet avec confirmation avant envoi.',
         reason: recommendation.explanation,
         projectId: devis.projectId,
         devisId: devis.id,
         clientName: devis.clientName || formatClientName(project),
-        eligible: true,
+        eligible: !isInformational,
         clientEmailPresent: hasText(devis.clientEmail),
-        primaryActionLabel: isBlocked ? "Ouvrir le dossier pour compléter l'e-mail" : 'Ouvrir le dossier pour préparer la relance',
+        primaryActionLabel: needsContactDetails
+          ? "Ouvrir le dossier pour compléter l'e-mail"
+          : recommendation.lifecycle === 'follow_up_required'
+            ? 'Ouvrir le dossier pour décider de la suite'
+            : isInformational
+              ? 'Ouvrir le dossier pour suivre la réponse'
+              : 'Ouvrir le dossier pour préparer la relance',
         primaryActionHref: `/dashboard-v2/projet/${devis.projectId}`,
       })
     })
-
-    const observedFollowup = devisList
-      .map((devis) => ({ devis, state: getQuoteFollowupState(devis) }))
-      .map(({ devis, state }) => ({
-        devis,
-        recommendation: describeQuoteRecommendation({ state, hasClientEmail: hasText(devis.clientEmail), lastFollowUpAt: devis.lastFollowUpAt }),
-      }))
-      .filter((candidate) => candidate.recommendation?.lifecycle === 'observed')
-      .sort((a, b) => new Date(b.devis.lastFollowUpAt || 0).getTime() - new Date(a.devis.lastFollowUpAt || 0).getTime())[0]
-
-    if (observedFollowup?.recommendation) {
-      const { devis, recommendation } = observedFollowup
-      const project = projectById.get(devis.projectId)
-      actions.push({
-        id: `quote-followup-observed-${devis.id}`,
-        type: 'quote_followup',
-        priority: 'low',
-        status: 'observed',
-        lifecycle: recommendation.lifecycle,
-        expectedObservation: recommendation.expectedObservation,
-        executionEvidence: recommendation.executionEvidence,
-        title: 'Relance enregistrée',
-        description: 'Le dossier reste sous observation : aucune nouvelle relance immédiate n’est proposée.',
-        reason: recommendation.explanation,
-        projectId: devis.projectId,
-        devisId: devis.id,
-        clientName: devis.clientName || formatClientName(project),
-        eligible: false,
-        clientEmailPresent: hasText(devis.clientEmail),
-        primaryActionLabel: 'Ouvrir le dossier pour suivre la réponse',
-        primaryActionHref: `/dashboard-v2/projet/${devis.projectId}`,
-      })
-    }
 
     if (hasText(artisanConfig?.googleReviewUrl)) {
       const reviewProject = projects.find((project) =>

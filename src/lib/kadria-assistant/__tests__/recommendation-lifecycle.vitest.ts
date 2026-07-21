@@ -11,29 +11,54 @@ describe('recommendation lifecycle', () => {
     })
   })
 
-  it('reframes an impossible follow-up as a missing contact detail', () => {
+  it('reframes an impossible follow-up as inconclusive missing contact data', () => {
     expect(describeQuoteRecommendation({ state: dueState, hasClientEmail: false })).toMatchObject({
-      lifecycle: 'blocked',
+      lifecycle: 'inconclusive',
       explanation: expect.stringMatching(/e-mail client manque/i),
     })
   })
 
-  it('observes a recorded follow-up rather than repeating it', () => {
+  it('starts an observation period after a recorded follow-up', () => {
     const recent = new Date('2026-07-21T09:00:00.000Z').toISOString()
     expect(describeQuoteRecommendation({
       state: { canFollowUp: true, shouldAutoFollowUp: false, stage: 'none', reason: 'Relance finale prévue.' },
       hasClientEmail: true,
       lastFollowUpAt: recent,
     }, new Date('2026-07-21T12:00:00.000Z'))).toMatchObject({
-      lifecycle: 'observed',
+      lifecycle: 'executed',
       executionEvidence: expect.stringMatching(/enregistrée/i),
     })
   })
 
-  it('does not invent a lifecycle when neither action nor evidence is available', () => {
+  it('resolves the recommendation when the quote is accepted after a follow-up', () => {
     expect(describeQuoteRecommendation({
       state: { canFollowUp: false, shouldAutoFollowUp: false, stage: 'completed', reason: 'Devis accepté.' },
       hasClientEmail: true,
-    })).toBeNull()
+    })).toMatchObject({ lifecycle: 'resolved' })
+  })
+
+  it('resolves the recommendation when the quote is refused after a follow-up', () => {
+    expect(describeQuoteRecommendation({
+      state: { canFollowUp: false, shouldAutoFollowUp: false, stage: 'completed', reason: 'Devis refusé.' },
+      hasClientEmail: true,
+      followUpCount: 1,
+    })).toMatchObject({ lifecycle: 'resolved' })
+  })
+
+  it('requires a new decision after the observation period only when the follow-up is due', () => {
+    expect(describeQuoteRecommendation({
+      state: dueState,
+      hasClientEmail: true,
+      lastFollowUpAt: '2026-07-15T09:00:00.000Z',
+      followUpCount: 1,
+    }, new Date('2026-07-21T12:00:00.000Z'))).toMatchObject({ lifecycle: 'follow_up_required' })
+  })
+
+  it('does not repeat follow-ups indefinitely after the existing maximum', () => {
+    expect(describeQuoteRecommendation({
+      state: { canFollowUp: false, shouldAutoFollowUp: false, stage: 'completed', reason: 'Toutes les relances prévues ont été envoyées.' },
+      hasClientEmail: true,
+      followUpCount: 3,
+    })).toMatchObject({ lifecycle: 'inconclusive', uncertainty: expect.stringMatching(/silence/i) })
   })
 })

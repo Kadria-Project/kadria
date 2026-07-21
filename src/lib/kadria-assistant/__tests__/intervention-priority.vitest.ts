@@ -22,12 +22,21 @@ describe('collaborator intervention priority', () => {
     expect(ranked[0]).toMatchObject({ level: 'informational', isPrimary: false })
   })
 
-  it('keeps an observed result out of the next primary recommendation', () => {
+  it('keeps an observing result out of the next primary recommendation', () => {
     const ranked = prioritizeInterventions([
-      { ...action('observed', 'quote_followup', 'low'), lifecycle: 'observed' as const },
+      { ...action('observed', 'quote_followup', 'low'), lifecycle: 'observing' as const },
       action('quote', 'quote_followup', 'high'),
     ])
     expect(ranked.map((item) => item.id)).toEqual(['quote'])
+  })
+
+  it('never promotes a resolved recommendation as the active priority', () => {
+    const ranked = prioritizeInterventions([
+      { ...action('resolved', 'quote_followup', 'low'), lifecycle: 'resolved' as const, primaryActionHref: '/dashboard-v2/projet/resolved' },
+      { ...action('active', 'configuration', 'medium'), primaryActionHref: '/parametres' },
+    ])
+    expect(ranked.find((item) => item.id === 'resolved')).toMatchObject({ isPrimary: false, level: 'informational' })
+    expect(ranked.find((item) => item.id === 'active')).toMatchObject({ isPrimary: true })
   })
 
   it('does not repeat the same actionable intervention in one result', () => {

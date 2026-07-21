@@ -45,7 +45,7 @@ interface TodayActionCard {
   priorityReason?: string;
   isPrimary?: boolean;
   status: 'ready' | 'blocked' | 'observed';
-  lifecycle: 'proposed' | 'opened' | 'observed' | 'blocked' | 'obsolete';
+  lifecycle: 'proposed' | 'viewed' | 'executed' | 'observing' | 'resolved' | 'follow_up_required' | 'inconclusive' | 'blocked' | 'obsolete';
   expectedObservation: string;
   executionEvidence?: string;
   title: string;
@@ -700,7 +700,7 @@ export default function KadriaAssistantWidget() {
           todayActions: message.todayActions.map((action) => action.id === actionId && action.lifecycle === 'proposed'
             ? {
                 ...action,
-                lifecycle: 'opened' as const,
+                lifecycle: 'viewed' as const,
                 description: 'Dossier ouvert. Cette consultation ne confirme pas encore la réalisation de l’action.',
                 expectedObservation: 'Je vérifierai une preuve enregistrée après votre confirmation dans le dossier.',
               }
@@ -750,8 +750,16 @@ export default function KadriaAssistantWidget() {
                   ? 'Bloqué'
                   : action.status === 'observed'
                     ? 'Observée'
-                    : action.lifecycle === 'opened'
-                      ? 'Dossier ouvert'
+                    : action.lifecycle === 'viewed'
+                      ? 'Dossier consulté'
+                      : action.lifecycle === 'executed'
+                        ? 'Exécutée'
+                        : action.lifecycle === 'observing'
+                          ? 'Observation'
+                          : action.lifecycle === 'follow_up_required'
+                            ? 'À réévaluer'
+                            : action.lifecycle === 'inconclusive'
+                              ? 'À clarifier'
                       : action.priority === 'high'
                     ? 'À traiter'
                     : action.priority === 'medium'

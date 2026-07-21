@@ -52,6 +52,10 @@ export interface QuoteFollowupInput {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 export const MAX_QUOTE_FOLLOW_UPS = 3
+// Une première relance J+2 est suivie d'une nouvelle observation à J+5 dans
+// le contrat métier existant. Cette fenêtre est aussi la référence unique du
+// Collaborateur pour attendre un effet avant toute nouvelle recommandation.
+export const QUOTE_FOLLOW_UP_OBSERVATION_DAYS = 3
 
 const NON_FOLLOW_UP_STATUTS = [
   'accepté', 'accepte', 'refusé', 'refuse',
