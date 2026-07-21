@@ -16,6 +16,7 @@ import { getTrackingBriefForAssistant } from '@/src/lib/kadria-assistant/trackin
 import { buildTrackingInsightResponse } from '@/src/lib/kadria-assistant/tracking-insights'
 import { getPerformanceDataForAssistant } from '@/src/lib/kadria-assistant/performance-tools'
 import { buildPerformanceAssistantResponse } from '@/src/lib/kadria-assistant/performance-insights'
+import { buildProjectAssistantResponse } from '@/src/lib/kadria-assistant/project-insights'
 import type { PerformancePeriodKey } from '@/src/lib/performance/performance-types'
 import {
   formatProjectSummaryForAssistant,
@@ -63,6 +64,10 @@ function isTrackingIntent(intent: string): intent is 'tracking.blocked_projects'
 
 function isPerformanceIntent(intent: string): intent is 'performance.summary' | 'performance.explain_change' | 'performance.contributing_projects' {
   return intent === 'performance.summary' || intent === 'performance.explain_change' || intent === 'performance.contributing_projects'
+}
+
+function isProjectIntent(intent: string): intent is 'project.summary' | 'project.missing_information' | 'project.next_action' {
+  return intent === 'project.summary' || intent === 'project.missing_information' || intent === 'project.next_action'
 }
 
 function performancePeriod(value: unknown): PerformancePeriodKey {
@@ -556,6 +561,11 @@ export async function POST(request: NextRequest) {
         ? { kind: 'message' as const, message: typeof body?.message === 'string' ? body.message.slice(0, MAX_MESSAGE_LENGTH) : lastUserMessage, context: pageContext }
         : null
     const resolution = requestIntent ? resolveAssistantIntent(requestIntent) : null
+    if (resolution?.kind === 'capability' && isProjectIntent(resolution.intent) && currentProjectSummary) {
+      const assistantResponse = buildProjectAssistantResponse(resolution.intent, currentProjectSummary)
+      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'project-summary', durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, responseMode: 'deterministic', success: true })
+      return NextResponse.json({ success: true, answer: assistantResponse.summary, assistantResponse, usage: null, navigationActions: assistantResponse.actions?.filter((action) => action.kind === 'navigate').map((action) => ({ label: action.label, href: action.href })) })
+    }
     if (resolution?.kind === 'capability' && isTrackingIntent(resolution.intent)) {
       const tracking = await getTrackingBriefForAssistant(session)
       if (tracking.kind === 'forbidden') {
