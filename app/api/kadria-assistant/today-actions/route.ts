@@ -500,10 +500,16 @@ export async function GET() {
     )
 
     const prioritizedActions = prioritizeInterventions(uniqueActions)
+    const visibleActions = prioritizedActions.slice(0, 3)
+    const confirmationPending = prioritizedActions.find((action) => action.arbitration?.isActive && action.arbitration.arbitrationType === 'already_handled')
+    if (confirmationPending && !visibleActions.some((action) => action.interventionId === confirmationPending.interventionId)) {
+      const replacementIndex = visibleActions.reduce((lastIndex, action, index) => action.isPrimary ? lastIndex : index, -1)
+      if (replacementIndex >= 0) visibleActions[replacementIndex] = confirmationPending
+    }
 
     return NextResponse.json({
       success: true,
-      actions: prioritizedActions.slice(0, 3),
+      actions: visibleActions,
     })
   } catch (error) {
     console.error('[KADRIA-ASSISTANT TODAY ACTIONS]', error instanceof Error ? error.message : String(error))
