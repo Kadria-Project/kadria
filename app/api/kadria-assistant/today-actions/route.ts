@@ -11,6 +11,7 @@ import { buildAutomaticTasks, calculateOpportunityScore } from '@/src/lib/commer
 import { prioritizeInterventions, type CollaboratorInterventionLevel } from '@/src/lib/kadria-assistant/intervention-priority'
 import { describeQuoteRecommendation, type RecommendationLifecycle } from '@/src/lib/kadria-assistant/recommendation-lifecycle'
 import { createInterventionId, interventionIdFromViewedDescription } from '@/src/lib/kadria-assistant/intervention-identity'
+import { buildQuoteInterventionMemory, type InterventionContinuity, type InterventionMemory } from '@/src/lib/kadria-assistant/intervention-memory'
 
 type TodayActionPriority = 'high' | 'medium' | 'low'
 type TodayActionType =
@@ -31,6 +32,8 @@ interface TodayAction {
   isPrimary?: boolean
   interventionId: string
   viewedAt?: string
+  memory?: InterventionMemory
+  continuity?: InterventionContinuity
   status: 'ready' | 'blocked' | 'observed'
   lifecycle: RecommendationLifecycle
   expectedObservation: string
@@ -327,6 +330,14 @@ export async function GET() {
               : 'Ouvrir le dossier pour préparer la relance',
         primaryActionHref: `/dashboard-v2/projet/${devis.projectId}`,
       }))
+      const lastAction = actions[actions.length - 1]
+      if (lastAction) {
+        const resolvedAt = recommendation.lifecycle === 'resolved' ? (devis.acceptedAt || devis.declinedAt || undefined) : undefined
+        const outcome = devis.acceptedAt || devis.accepted ? 'accepted' : devis.declinedAt ? 'declined' : undefined
+        const built = buildQuoteInterventionMemory({ interventionId: lastAction.interventionId, projectId: devis.projectId, lifecycle: lastAction.lifecycle, loop: recommendation, quoteSentAt: devis.quoteSentAt, viewedAt: lastAction.viewedAt, lastFollowUpAt: devis.lastFollowUpAt, followUpCount: devis.followUpCount, resolvedAt, outcome })
+        lastAction.memory = built.memory
+        lastAction.continuity = built.continuity
+      }
     })
 
     if (hasText(artisanConfig?.googleReviewUrl)) {
