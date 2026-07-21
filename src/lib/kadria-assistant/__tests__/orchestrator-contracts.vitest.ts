@@ -8,7 +8,7 @@ describe('Kadria orchestrator contracts', () => {
   it('exposes only registered, available capabilities for a page', () => {
     expect(isAssistantIntentAvailable('project.summary', 'project_detail')).toBe(true)
     expect(isAssistantIntentAvailable('project.summary', 'performance')).toBe(false)
-    expect(getAssistantCapability('tracking.blocked_projects')?.status).toBe('planned')
+    expect(getAssistantCapability('tracking.blocked_projects')?.status).toBe('available')
   })
 
   it('accepts a direct intent without classifying a user sentence', () => {
@@ -27,8 +27,14 @@ describe('Kadria orchestrator contracts', () => {
   })
 
   it('falls back to conversation when no executable capability exists', () => {
-    expect(resolveAssistantIntent({ kind: 'message', message: 'Quels dossiers sont bloqués ?', context: { pageType: 'commercial_tracking', route: '/dashboard-v2/suivi' } })).toEqual({
+    expect(resolveAssistantIntent({ kind: 'message', message: 'Question générale', context: { pageType: 'commercial_tracking', route: '/dashboard-v2/suivi' } })).toEqual({
       kind: 'conversation', confidence: 0, parameters: {},
+    })
+  })
+
+  it('recognizes the supported tracking phrasing without OpenAI', () => {
+    expect(resolveAssistantIntent({ kind: 'message', message: 'Quels dossiers sont bloqués ?', context: { pageType: 'commercial_tracking', route: '/dashboard-v2/suivi' } })).toMatchObject({
+      kind: 'capability', intent: 'tracking.blocked_projects',
     })
   })
 })

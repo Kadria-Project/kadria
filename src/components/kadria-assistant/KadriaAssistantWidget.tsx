@@ -5,6 +5,8 @@ import { Sparkles, Trash2 } from 'lucide-react';
 import type { AssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
 import { toKadriaAssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
 import { getCollaboratorSuggestions, type CollaboratorSuggestion } from '@/src/lib/kadria-assistant/collaborator-suggestions';
+import type { AssistantIntent } from '@/src/lib/kadria-assistant/assistant-intents';
+import type { AssistantResponseDetail } from '@/src/lib/kadria-assistant/assistant-response';
 import { useShellContext } from '@/src/components/workspace/shell/ShellContextProvider';
 import { SHELL_OVERLAY_LAYERS } from '@/src/components/workspace/shell/shell-context';
 
@@ -50,6 +52,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   navigationActions?: NavigationAction[];
+  assistantDetails?: AssistantResponseDetail[];
   todayActions?: TodayActionCard[];
   proposedAction?: ProposedAction;
   proposedActionState?: ProposedActionState;
@@ -359,7 +362,7 @@ export default function KadriaAssistantWidget() {
     };
   }, [integratedDesktop, open]);
 
-  async function sendMessage(content: string) {
+  async function sendMessage(content: string, intent?: AssistantIntent) {
     const trimmed = content.trim();
     if (!trimmed || loading || quotaReached) return;
 
@@ -383,7 +386,7 @@ export default function KadriaAssistantWidget() {
       const res = await fetch('/api/kadria-assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nextMessages, pageContext }),
+        body: JSON.stringify(intent ? { kind: 'intent', intent, context: pageContext, messages: nextMessages } : { messages: nextMessages, pageContext }),
       });
       const data = await res.json();
 
@@ -412,6 +415,11 @@ export default function KadriaAssistantWidget() {
         data?.proposedAction && typeof data.proposedAction === 'object' && typeof data.proposedAction.type === 'string'
           ? (data.proposedAction as ProposedAction)
           : undefined;
+      const assistantDetails: AssistantResponseDetail[] | undefined = Array.isArray(data?.assistantResponse?.details)
+        ? data.assistantResponse.details.filter(
+            (detail: unknown): detail is AssistantResponseDetail => Boolean(detail) && typeof (detail as AssistantResponseDetail).id === 'string' && typeof (detail as AssistantResponseDetail).label === 'string'
+          ).slice(0, 5)
+        : undefined;
 
       setMessages((prev) => [
         ...prev,
@@ -419,6 +427,7 @@ export default function KadriaAssistantWidget() {
           role: 'assistant',
           content: data.answer,
           navigationActions,
+          assistantDetails,
           proposedAction,
           proposedActionState: proposedAction ? 'pending' : undefined,
         },
@@ -432,6 +441,7 @@ export default function KadriaAssistantWidget() {
 
   function runSuggestion(suggestion: CollaboratorSuggestion) {
     if (suggestion.kind === 'prompt') { void sendMessage(suggestion.prompt); return; }
+    if (suggestion.kind === 'intent') { void sendMessage(suggestion.label, suggestion.intent); return; }
     if (suggestion.kind === 'search') { closeCollaborator(); openGlobalSearch(); return; }
     if (suggestion.kind === 'quick-create') { closeCollaborator(); openQuickCreate(); return; }
     closeCollaborator();
@@ -827,6 +837,11 @@ export default function KadriaAssistantWidget() {
                 {m.role === 'assistant' && m.todayActions && m.todayActions.length > 0 && (
                   <div className="w-full max-w-[85%]">
                     {renderTodayActionCards(m.todayActions)}
+                  </div>
+                )}
+                {m.role === 'assistant' && m.assistantDetails && m.assistantDetails.length > 0 && (
+                  <div className="mt-2 w-full max-w-[85%] space-y-1.5">
+                    {m.assistantDetails.map((detail) => <div key={detail.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"><p className="font-semibold text-slate-900">{detail.label}</p><p className="mt-0.5">{detail.value}</p>{detail.meta && <p className="mt-1 text-slate-500">{detail.meta}</p>}</div>)}
                   </div>
                 )}
                 {m.role === 'assistant' && m.navigationActions && m.navigationActions.length > 0 && (

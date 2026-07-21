@@ -51,8 +51,8 @@ export const ASSISTANT_CAPABILITIES: readonly AssistantCapability[] = [
     allowedPageTypes: ['commercial_tracking', 'dashboard_home'],
     permission: 'projects.read',
     responseMode: 'deterministic',
-    status: 'planned',
-    executor: 'getTrackingInsights',
+    status: 'available',
+    executor: 'getTrackingBriefForAssistant',
   },
   {
     id: 'performance-insights',

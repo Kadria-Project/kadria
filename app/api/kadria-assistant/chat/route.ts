@@ -10,6 +10,10 @@ import {
   type ProposedAction,
 } from '@/src/lib/assistant/propose-action'
 import { logAssistantAction } from '@/src/lib/assistant/actions'
+import { isAssistantIntent } from '@/src/lib/kadria-assistant/assistant-intents'
+import { resolveAssistantIntent } from '@/src/lib/kadria-assistant/assistant-intent-resolver'
+import { getTrackingBriefForAssistant } from '@/src/lib/kadria-assistant/tracking-tools'
+import { buildTrackingInsightResponse } from '@/src/lib/kadria-assistant/tracking-insights'
 import {
   formatProjectSummaryForAssistant,
   getProjectSummaryForAssistant,
@@ -48,6 +52,10 @@ function buildProjectHref(projectId: string) {
 
 function buildProjectAction(projectId: string, label = 'Ouvrir le dossier'): NavigationAction {
   return { label, href: buildProjectHref(projectId) }
+}
+
+function isTrackingIntent(intent: string): intent is 'tracking.blocked_projects' | 'tracking.followups' | 'tracking.next_actions' {
+  return intent === 'tracking.blocked_projects' || intent === 'tracking.followups' || intent === 'tracking.next_actions'
 }
 
 function normalizeText(value: string) {
@@ -512,7 +520,7 @@ export async function POST(request: NextRequest) {
     }
     artisanIdForLog = session.artisanId
 
-    let body: { messages?: unknown; pageContext?: unknown }
+    let body: { messages?: unknown; pageContext?: unknown; context?: unknown; kind?: unknown; intent?: unknown; parameters?: unknown; message?: unknown }
     try {
       body = await request.json()
     } catch {
@@ -520,17 +528,38 @@ export async function POST(request: NextRequest) {
     }
 
     const messages = sanitizeMessages(body?.messages)
-    if (messages.length === 0) {
+    if (messages.length === 0 && !(body?.kind === 'intent' && isAssistantIntent(body.intent))) {
       return NextResponse.json({ success: false, error: 'Aucun message fourni' }, { status: 400 })
     }
 
-    const pageContext = sanitizeAssistantPageContext(body?.pageContext)
+    const pageContext = sanitizeAssistantPageContext(body?.context || body?.pageContext)
     const currentProjectSummary = pageContext?.projectId
       ? await getProjectSummaryForAssistant(pageContext.projectId, session.artisanId)
       : null
 
     const context = await buildArtisanAssistantContext(session.artisanId, session.plan || 'essentiel')
     const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')?.content || ''
+    const requestIntent = body?.kind === 'intent' && isAssistantIntent(body.intent) && pageContext
+      ? { kind: 'intent' as const, intent: body.intent, context: pageContext, ...(body.parameters && typeof body.parameters === 'object' ? { parameters: body.parameters as Record<string, unknown> } : {}) }
+      : pageContext
+        ? { kind: 'message' as const, message: typeof body?.message === 'string' ? body.message.slice(0, MAX_MESSAGE_LENGTH) : lastUserMessage, context: pageContext }
+        : null
+    const resolution = requestIntent ? resolveAssistantIntent(requestIntent) : null
+    if (resolution?.kind === 'capability' && isTrackingIntent(resolution.intent)) {
+      const tracking = await getTrackingBriefForAssistant(session)
+      if (tracking.kind === 'forbidden') {
+        return NextResponse.json({ success: false, error: 'Vous n’avez pas accès à ces dossiers.' }, { status: 403 })
+      }
+      const assistantResponse = buildTrackingInsightResponse(resolution.intent, tracking.brief)
+      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'tracking-insights', durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, responseMode: 'deterministic', success: true })
+      return NextResponse.json({
+        success: true,
+        answer: assistantResponse.summary,
+        assistantResponse,
+        usage: null,
+        navigationActions: assistantResponse.actions?.filter((action) => action.kind === 'navigate').map((action) => ({ label: action.label, href: action.href })),
+      })
+    }
     const contextualReply = await buildContextualReadOnlyReply({
       lastUserMessage,
       pageContext,

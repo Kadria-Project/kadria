@@ -12,6 +12,11 @@ function normalized(value: string) {
 
 function resolveMessageIntent(request: Extract<AssistantRequest, { kind: 'message' }>): AssistantIntent | null {
   const message = normalized(request.message)
+  if (request.context.pageType === 'commercial_tracking') {
+    if (/bloqu|stagn/.test(message)) return 'tracking.blocked_projects'
+    if (/relanc/.test(message)) return 'tracking.followups'
+    if (/sans prochaine action|aucune prochaine action|sans rappel/.test(message)) return 'tracking.next_actions'
+  }
   if (request.context.pageType === 'project_detail') {
     if (/resum|resume/.test(message)) return 'project.summary'
     if (/manqu|complet|information/.test(message)) return 'project.missing_information'
