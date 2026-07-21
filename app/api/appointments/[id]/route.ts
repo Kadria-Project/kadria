@@ -38,7 +38,17 @@ function matchesWorkspaceProject(value: unknown, projectId: string | null) {
   return !projectId || String(value || '') === projectId
 }
 
-const workspacePatchFields = new Set(['title', 'start', 'end', 'location', 'description', 'projectId', 'requestId'])
+const workspacePatchFields = new Set(['title', 'start', 'end', 'location', 'description', 'projectId', 'client_name', 'client_email', 'client_phone', 'requestId'])
+
+function optionalText(value: unknown, maxLength = 255) {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) || null : null
+}
+
+function normalizeEmail(value: unknown) {
+  const email = optionalText(value)
+  if (!email) return null
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email.toLowerCase() : undefined
+}
 
 export function validateWorkspaceAppointmentPatch(body: Record<string, unknown>) {
   if (typeof body.projectId !== 'string' || !body.projectId.trim()) return
@@ -54,11 +64,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (!tenantContext) return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     const { id } = await context.params
     const projectId = request.nextUrl.searchParams.get('projectId')
-    const { data, error } = await supabaseAdmin.from('project_appointments').select('id, tenant_id, project_id, assigned_user_id, title, start_time, end_time, status, location, description').eq('id', id).maybeSingle()
+    const { data, error } = await supabaseAdmin.from('project_appointments').select('id, tenant_id, project_id, assigned_user_id, title, start_time, end_time, status, location, description, client_name, client_phone, client_email').eq('id', id).maybeSingle()
     if (error) { console.error('[APPOINTMENTS GET] Erreur lecture rendez-vous:', error.message); return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 }) }
     if (!data || data.tenant_id !== tenantContext.tenantId || !matchesWorkspaceProject(data.project_id, projectId)) return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     if (!canEditAppointment(tenantContext, data.assigned_user_id ? String(data.assigned_user_id) : null)) return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
-    return NextResponse.json({ success: true, appointment: { id: String(data.id), title: String(data.title || ''), start: String(data.start_time || ''), end: String(data.end_time || ''), status: String(data.status || ''), assignedUserId: data.assigned_user_id ? String(data.assigned_user_id) : null, location: String(data.location || ''), description: String(data.description || '') } })
+    return NextResponse.json({ success: true, appointment: { id: String(data.id), title: String(data.title || ''), start: String(data.start_time || ''), end: String(data.end_time || ''), status: String(data.status || ''), assignedUserId: data.assigned_user_id ? String(data.assigned_user_id) : null, location: String(data.location || ''), description: String(data.description || ''), clientName: data.client_name ? String(data.client_name) : null, clientPhone: data.client_phone ? String(data.client_phone) : null, clientEmail: data.client_email ? String(data.client_email) : null } })
   } catch (error) { console.error('[APPOINTMENTS GET]', error instanceof Error ? error.message : String(error)); return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 }) }
 }
 
@@ -85,7 +95,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const confirmationAvailable = await tableHasColumn('project_appointments', 'confirmation_status')
     const { data: existingResult, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
-      .select(['id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, location, description, status, event_type, provider, google_event_id, updated_at', confirmationAvailable ? 'confirmation_status, confirmation_version, confirmation_request_id' : ''].filter(Boolean).join(', '))
+      .select(['id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, client_phone, client_email, start_time, end_time, location, description, status, event_type, provider, google_event_id, updated_at', confirmationAvailable ? 'confirmation_status, confirmation_version, confirmation_request_id' : ''].filter(Boolean).join(', '))
       .eq('id', id)
       .maybeSingle()
     const existing = existingResult as unknown as Record<string, unknown> | null
@@ -97,7 +107,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!existing || existing.tenant_id !== tenantContext.tenantId) {
       return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     }
-    if (!matchesWorkspaceProject(existing.project_id, typeof body.projectId === 'string' ? body.projectId : null)) return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
+    if (existing.project_id && !matchesWorkspaceProject(existing.project_id, typeof body.projectId === 'string' ? body.projectId : null)) return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     if (!canEditAppointment(tenantContext, existing.assigned_user_id ? String(existing.assigned_user_id) : null)) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
@@ -123,7 +133,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
     }
 
-    const nextProjectId = existing.project_id ? String(existing.project_id) : null
+    const nextProjectId = body.projectId === undefined ? (existing.project_id ? String(existing.project_id) : null) : optionalText(body.projectId, 120)
 
     const project = nextProjectId
       ? await resolveProjectForAppointment({
@@ -134,6 +144,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (nextProjectId && !project) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
+    const nextClientEmail = body.client_email === undefined ? (existing.client_email ? String(existing.client_email) : null) : normalizeEmail(body.client_email)
+    if (nextClientEmail === undefined) return NextResponse.json({ success: false, error: 'Adresse e-mail invalide' }, { status: 400 })
 
     if (nextAssignedUserId) {
       const assignableMembers = await listAssignableAppointmentMembers(tenantContext.tenantId)
@@ -223,6 +235,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       ...(body.end !== undefined ? { end_time: nextEnd } : {}),
       ...(body.location !== undefined ? { location: body.location ? String(body.location) : null } : {}),
       ...(body.description !== undefined ? { description: body.description ? String(body.description) : null } : {}),
+      ...(body.projectId !== undefined ? { project_id: nextProjectId } : {}),
+      ...(body.client_name !== undefined ? { client_name: optionalText(body.client_name) } : {}),
+      ...(body.client_phone !== undefined ? { client_phone: optionalText(body.client_phone) } : {}),
+      ...(body.client_email !== undefined ? { client_email: nextClientEmail } : {}),
       ...(body.status !== undefined ? { status: String(body.status || '') } : {}),
       ...(body.eventType !== undefined ? { event_type: body.eventType } : {}),
       ...(shouldUpdateAssignee ? { assigned_user_id: nextAssignedUserId, is_unassigned: false } : {}),
@@ -244,7 +260,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       .eq('id', id)
       .eq('tenant_id', tenantContext.tenantId)
       .eq('updated_at', String(existing.updated_at || ''))
-      .select('id, title, client_name, project_id, start_time, end_time, location, description, status, event_type, assigned_user_id, is_unassigned, updated_at')
+      .select('id, title, client_name, client_phone, client_email, project_id, start_time, end_time, location, description, status, event_type, assigned_user_id, is_unassigned, updated_at')
       .maybeSingle()
 
     if (updateError || !updated) {
@@ -323,7 +339,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         appointmentId: id,
         projectId: nextProjectId,
         artisanId: project?.artisanId || String(existing.artisan_id || session.artisanId || ''),
-        clientEmail: project?.clientEmail || null,
+        clientEmail: updated.client_email || existing.client_email || project?.clientEmail || null,
         clientName: project?.client_name || (existing.client_name ? String(existing.client_name) : null),
         title: updated.title || null,
         start: updated.start_time || null,

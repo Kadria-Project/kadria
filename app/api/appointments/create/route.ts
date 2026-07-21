@@ -41,10 +41,13 @@ export async function POST(request: NextRequest) {
       start,
       end,
       allDay,
-      location,
       description,
       projectId,
       assignedUserId: requestedAssignedUserId,
+      client_name: explicitClientName,
+      client_email: explicitClientEmail,
+      client_phone: explicitClientPhone,
+      location: explicitLocation,
     } = body as {
       title?: string
       eventType?: string
@@ -55,6 +58,9 @@ export async function POST(request: NextRequest) {
       description?: string
       projectId?: string | null
       assignedUserId?: string | null
+      client_name?: string | null
+      client_email?: string | null
+      client_phone?: string | null
     }
 
     if (!title || !start) {
@@ -74,9 +80,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
     }
 
-    let clientName: string | null = null
-    let clientPhone: string | null = null
-    let resolvedLocation: string | null = location || null
+    const optionalText = (value: unknown) => typeof value === 'string' ? value.trim().slice(0, 255) || null : null
+    const explicitEmail = optionalText(explicitClientEmail)
+    if (explicitEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(explicitEmail)) return NextResponse.json({ success: false, error: 'Adresse e-mail invalide' }, { status: 400 })
+    let clientName: string | null = optionalText(explicitClientName)
+    let clientPhone: string | null = optionalText(explicitClientPhone)
+    let clientEmail: string | null = explicitEmail?.toLowerCase() || null
+    const normalizedLocation = optionalText(explicitLocation)
+    let resolvedLocation: string | null = normalizedLocation
 
     if (projectId) {
       const project = await resolveProjectForAppointment({ projectId, tenantContext })
@@ -85,8 +96,9 @@ export async function POST(request: NextRequest) {
       }
 
       const projectRecord = project as Record<string, unknown>
-      clientName = [projectRecord.client_first_name, projectRecord.client_name].filter(Boolean).join(' ').trim() || null
-      clientPhone = projectRecord.client_phone ? String(projectRecord.client_phone) : null
+      clientName = clientName || [projectRecord.client_first_name, projectRecord.client_name].filter(Boolean).join(' ').trim() || null
+      clientPhone = clientPhone || (projectRecord.client_phone ? String(projectRecord.client_phone) : null)
+      clientEmail = clientEmail || (projectRecord.client_email ? String(projectRecord.client_email).trim().toLowerCase() : null)
       resolvedLocation = resolvedLocation || [projectRecord.site_address, projectRecord.city].filter(Boolean).join(', ') || null
     }
 
@@ -122,6 +134,7 @@ export async function POST(request: NextRequest) {
       location: resolvedLocation,
       client_name: clientName,
       client_phone: clientPhone,
+      client_email: clientEmail,
       status: 'confirmed',
       tenant_id: tenantContext.tenantId,
       assigned_user_id: assignedUserId,

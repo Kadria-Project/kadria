@@ -3,7 +3,6 @@ import { Resend } from 'resend'
 import { getSession } from '@/src/lib/auth-utils'
 import { canEditAppointment } from '@/src/lib/appointments/access'
 import { getArtisanConfig } from '@/src/lib/airtable'
-import { getClientPortalUrl } from '@/src/lib/client-portal'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { isConfirmationStatus, type AppointmentConfirmationStatus } from '@/src/lib/appointment-confirmation'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
@@ -130,7 +129,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     stage = 'load_appointment'
     const { data: appointment, error: appointmentError } = await supabaseAdmin
       .from('project_appointments')
-      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, confirmation_version')
+      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, client_email, confirmation_version')
       .eq('id', appointmentId)
       .maybeSingle()
     if (appointmentError) throw appointmentError
@@ -140,32 +139,25 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     if (!canEditAppointment(tenant, appointment.assigned_user_id ? String(appointment.assigned_user_id) : null)) {
       return failure(403, 'FORBIDDEN', 'Vous n’avez pas accès à cette action.')
     }
-    if (!appointment.project_id) {
-      return failure(400, 'PROJECT_REQUIRED', 'Ce rendez-vous n’est pas lié à un dossier client. Enregistrez le statut sans envoi.')
+    let project: { id: string; tenant_id: string; artisan_id: string | null; client_email: string | null } | null = null
+    if (appointment.project_id) {
+      stage = 'load_project'
+      const { data, error: projectError } = await supabaseAdmin
+        .from('Projects')
+        .select('id, tenant_id, artisan_id, client_email')
+        .eq('id', appointment.project_id)
+        .maybeSingle()
+      if (projectError) throw projectError
+      if (!data || data.tenant_id !== tenant.tenantId) return failure(404, 'PROJECT_NOT_FOUND', 'Le dossier associé n’est plus disponible.')
+      project = data
+      projectId = String(data.id)
     }
+    const localEmail = appointment.client_email ? String(appointment.client_email).trim().toLowerCase() : null
+    const recipientEmail = localEmail || (project?.client_email ? String(project.client_email).trim().toLowerCase() : null)
+    if (!isEmail(recipientEmail)) return failure(400, 'EMAIL_RECIPIENT_INVALID', 'Ajoutez une adresse e-mail pour préparer la confirmation.')
 
-    stage = 'load_project'
-    const { data: project, error: projectError } = await supabaseAdmin
-      .from('Projects')
-      .select('id, tenant_id, artisan_id, client_email')
-      .eq('id', appointment.project_id)
-      .maybeSingle()
-    if (projectError) throw projectError
-    if (!project || project.tenant_id !== tenant.tenantId) {
-      return failure(404, 'PROJECT_NOT_FOUND', 'Le dossier associé n’est plus disponible.')
-    }
-    projectId = String(project.id)
-    const recipientEmail = project.client_email ? String(project.client_email).trim().toLowerCase() : null
-    if (!isEmail(recipientEmail)) {
-      return failure(400, 'EMAIL_RECIPIENT_INVALID', 'Aucun email client valide n’est renseigné pour ce rendez-vous. Ajoutez une adresse email au dossier avant l’envoi.')
-    }
-
-    const artisanId = String(appointment.artisan_id || project.artisan_id || tenant.legacyArtisanId || '')
-    stage = 'prepare_portal'
-    const portalUrl = await getClientPortalUrl(projectId, artisanId)
-    if (!portalUrl) {
-      return failure(409, 'CLIENT_PORTAL_UNAVAILABLE', 'Le portail client ne peut pas être préparé. Enregistrez le statut sans envoi.')
-    }
+    const artisanId = String(appointment.artisan_id || project?.artisan_id || tenant.legacyArtisanId || '')
+    const portalUrl = projectId ? await import('@/src/lib/client-portal').then(({ getClientPortalUrl }) => getClientPortalUrl(projectId as string, artisanId)) : null
 
     const apiKey = process.env.RESEND_API_KEY
     if (!apiKey) return failure(503, 'RESEND_NOT_CONFIGURED', 'L’envoi d’email n’est pas disponible pour le moment.')
@@ -180,9 +172,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       preheader: meta.subject,
       title: meta.subject,
       intro: message,
-      ctaLabel: meta.cta,
-      ctaUrl: portalUrl,
-      secondaryText: `Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :\n${portalUrl}`,
+      ...(portalUrl ? { ctaLabel: meta.cta, ctaUrl: portalUrl, secondaryText: `Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :\n${portalUrl}` } : {}),
       artisanName: companyName,
     }
     const text = renderBaseEmailText(emailPayload)

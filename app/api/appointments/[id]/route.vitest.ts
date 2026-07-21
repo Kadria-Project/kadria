@@ -15,7 +15,7 @@ vi.mock('@vercel/functions', () => ({ waitUntil: vi.fn() }))
 import { validateWorkspaceAppointmentPatch } from './route'
 
 test('workspace PATCH accepts only its minimal mutation fields', () => {
-  expect(() => validateWorkspaceAppointmentPatch({ projectId: 'p1', title: 'Visite', start: '2026-08-01T09:00', end: '2026-08-01T10:00', location: '', description: '' })).not.toThrow()
+  expect(() => validateWorkspaceAppointmentPatch({ projectId: 'p1', title: 'Visite', start: '2026-08-01T09:00', end: '2026-08-01T10:00', location: '', description: '', client_name: 'Camille', client_email: 'camille@example.test', client_phone: '0600000000' })).not.toThrow()
   expect(() => validateWorkspaceAppointmentPatch({ projectId: 'p1', status: 'cancelled' })).toThrow('Champ non autorisé.')
   expect(() => validateWorkspaceAppointmentPatch({ projectId: 'p1', assignedUserId: 'u2' })).toThrow('Champ non autorisé.')
 })
@@ -25,7 +25,7 @@ test('appointment route scopes reads and mutations to project and tenant and ret
   expect(source).toContain("request.nextUrl.searchParams.get('projectId')")
   expect(source).toContain('matchesWorkspaceProject(data.project_id, projectId)')
   expect(source).toContain('matchesWorkspaceProject(existing.project_id')
-  expect(source).toContain("select('id, tenant_id, project_id, assigned_user_id, title, start_time, end_time, status, location, description')")
+  expect(source).toContain("select('id, tenant_id, project_id, assigned_user_id, title, start_time, end_time, status, location, description, client_name, client_phone, client_email')")
   expect(source).not.toContain("select('*')")
   expect(source).toContain("appointment: { id: String(data.id), title: String(data.title || '')")
 })

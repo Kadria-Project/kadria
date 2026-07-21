@@ -77,8 +77,7 @@ export default function CalendarWorkspace() {
   const [teamPermissions, setTeamPermissions] = useState<TeamPlanningPermissions | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<AppointmentProjectOption | null>(null);
-  const [locationTouched, setLocationTouched] = useState(false);
-  const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
+  const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', clientName: '', clientEmail: '', clientPhone: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
   const [currentTime] = useState(() => Date.now());
   const [confirmationFilter, setConfirmationFilter] = useState('all');
   const [collaboratorFilter, setCollaboratorFilter] = useState('all');
@@ -277,9 +276,8 @@ export default function CalendarWorkspace() {
   };
   const openCreate = useCallback((assignedUserId?: string, project?: AppointmentProjectOption | null) => {
     const now = new Date();
-    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: project ? [project.siteAddress, project.city].filter(Boolean).join(', ') : '', description: '', projectId: project?.id || null, assignedUserId: assignedUserId || currentUserId || '', eventType: 'appointment' });
+    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: project ? [project.siteAddress, project.city].filter(Boolean).join(', ') : '', description: '', clientName: project ? [project.clientFirstName, project.clientName].filter(Boolean).join(' ') : '', clientEmail: project?.clientEmail || '', clientPhone: project?.clientPhone || '', projectId: project?.id || null, assignedUserId: assignedUserId || currentUserId || '', eventType: 'appointment' });
     setSelectedProject(project || null);
-    setLocationTouched(false);
     setCreateError(null);
     setSuccessMessage(null);
     setCreateOpen(true);
@@ -312,6 +310,9 @@ export default function CalendarWorkspace() {
       end: appointment.end ? formatInputDate(new Date(appointment.end)) : '',
       location: appointment.location || '',
       description: appointment.description || '',
+      clientName: appointment.clientName || '',
+      clientEmail: appointment.clientEmail || '',
+      clientPhone: appointment.clientPhone || '',
       projectId: appointment.projectId,
       assignedUserId: appointment.assignedUserId || '',
       eventType: isEventType(appointment.eventType) ? appointment.eventType : 'appointment',
@@ -326,7 +327,6 @@ export default function CalendarWorkspace() {
       city: appointment.city || '',
       siteAddress: appointment.address || '',
     } : null);
-    setLocationTouched(false);
     setCreateError(null);
     setEditingAppointmentId(appointment.id);
   };
@@ -388,7 +388,6 @@ export default function CalendarWorkspace() {
     } finally { setConfirmationSaving(false); }
   };
   const updateFormField = (field: Exclude<keyof AppointmentCreateForm, 'projectId'>, value: string) => {
-    if (field === 'location') setLocationTouched(true);
     setCreateError(null);
     setForm((current) => ({ ...current, [field]: value }));
   };
@@ -398,7 +397,10 @@ export default function CalendarWorkspace() {
     setForm((current) => ({
       ...current,
       projectId: project?.id || null,
-      location: !locationTouched && project ? [project.siteAddress, project.city].filter(Boolean).join(', ') : current.location,
+      location: current.location || (project ? [project.siteAddress, project.city].filter(Boolean).join(', ') : ''),
+      clientName: current.clientName || (project ? [project.clientFirstName, project.clientName].filter(Boolean).join(' ') : ''),
+      clientEmail: current.clientEmail || project?.clientEmail || '',
+      clientPhone: current.clientPhone || project?.clientPhone || '',
     }));
   };
   const handleCreate = async () => {
@@ -414,12 +416,12 @@ export default function CalendarWorkspace() {
       const response = await fetch('/api/appointments/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || undefined, description: form.description || undefined, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType }),
+        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || undefined, description: form.description || undefined, client_name: form.clientName, client_email: form.clientEmail, client_phone: form.clientPhone, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType }),
       });
       const json = await response.json();
       if (!response.ok || !json?.success) throw new Error(json?.error || "Impossible d'ajouter le rendez-vous.");
       const successMessage = selectedProject ? 'Rendez-vous créé avec succès et rattaché au dossier.' : 'Rendez-vous créé avec succès.';
-      setForm({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
+      setForm({ title: '', start: '', end: '', location: '', description: '', clientName: '', clientEmail: '', clientPhone: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
       setSelectedProject(null);
       closeCreate();
       setSuccessMessage(successMessage);
@@ -443,7 +445,7 @@ export default function CalendarWorkspace() {
       const response = await fetch('/api/appointments/' + editingAppointmentId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || null, description: form.description || null, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType, requestId }),
+        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || null, description: form.description || null, client_name: form.clientName, client_email: form.clientEmail, client_phone: form.clientPhone, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType, requestId }),
       });
       const json = await response.json() as AppointmentMutationResponse;
       if (!response.ok || !json?.success) throw new Error(json?.error || "La modification n'a pas pu etre enregistree.");

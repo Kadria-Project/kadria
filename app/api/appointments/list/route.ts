@@ -21,6 +21,8 @@ type AppointmentRow = {
   location: string | null
   status: string | null
   client_name: string | null
+  client_phone: string | null
+  client_email: string | null
   google_event_id: string | null
   title: string | null
   tenant_id: string | null
@@ -122,7 +124,7 @@ export async function GET(request: NextRequest) {
     const collaborator = searchParams.get('collaborator')
 
     const appointmentColumns = [
-      'id, project_id, start_time, end_time, location, status, client_name, google_event_id, title, tenant_id, assigned_user_id, event_type, all_day, description, is_unassigned',
+      'id, project_id, start_time, end_time, location, status, client_name, client_phone, client_email, google_event_id, title, tenant_id, assigned_user_id, event_type, all_day, description, is_unassigned',
       qualificationAvailable ? 'qualification_status, qualification_outcome, qualification_note, qualification_next_action, qualified_at, qualified_by, qualification_version' : '',
       confirmationAvailable ? 'confirmation_status, confirmation_source, confirmation_note, confirmation_updated_at, confirmation_version' : '',
     ].filter(Boolean).join(', ')
@@ -237,15 +239,15 @@ export async function GET(request: NextRequest) {
           id: row.id,
           projectId: row.project_id || null,
           projectNumber: project ? project.id.slice(-6) : row.project_id ? String(row.project_id).slice(-6) : null,
-          clientName: project?.clientName || row.client_name || null,
+          clientName: row.client_name || project?.clientName || null,
           projectType: project?.projectTitle || project?.projectType || null,
           projectSummary: project?.aiSummary || null,
           budget: project?.budget || null,
           desiredTimeline: project?.desiredTimeline || null,
           photoCount: project?.photoCount || 0,
           city: project?.city || null,
-          clientPhone: project?.clientPhone || null,
-          clientEmail: project?.clientEmail || null,
+          clientPhone: row.client_phone || project?.clientPhone || null,
+          clientEmail: row.client_email || project?.clientEmail || null,
           address: project?.siteAddress || row.location || null,
           latitude: project?.latitude || null,
           longitude: project?.longitude || null,
