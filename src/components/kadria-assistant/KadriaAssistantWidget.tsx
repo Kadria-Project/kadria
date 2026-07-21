@@ -334,7 +334,7 @@ export default function KadriaAssistantWidget() {
   }, [open]);
 
   useEffect(() => {
-    const media = window.matchMedia('(min-width: 1440px)');
+    const media = window.matchMedia('(min-width: 1280px)');
     const update = () => setIntegratedDesktop(media.matches);
     update();
     media.addEventListener('change', update);
@@ -708,7 +708,7 @@ export default function KadriaAssistantWidget() {
         <MessageCircle className="relative h-6 w-6 text-[#22c55e] sm:h-6 sm:w-6" strokeWidth={2} />
       </button> */}
 
-        <div className={integratedDesktop ? 'kadria-native-pane flex h-full w-[clamp(360px,28vw,420px)] shrink-0 border-l border-slate-200 bg-white' : 'fixed inset-0'} style={integratedDesktop ? undefined : { zIndex: SHELL_OVERLAY_LAYERS.dialog }}>
+        <div className={integratedDesktop ? 'kadria-native-pane flex h-full w-[clamp(380px,28vw,420px)] shrink-0 border-l border-slate-200 bg-white' : 'fixed inset-0'} style={integratedDesktop ? undefined : { zIndex: SHELL_OVERLAY_LAYERS.dialog }}>
           <style jsx>{`
             .kadria-native-pane :global(header), .kadria-native-pane :global(footer) { background: #fff !important; border-color: #e2e8f0 !important; }
             .kadria-native-pane :global(main) { background: #f8fafc !important; }
@@ -728,9 +728,9 @@ export default function KadriaAssistantWidget() {
               drawerVisible ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
-          <header className="flex shrink-0 items-start justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
-            <div className="flex min-w-0 items-start gap-2.5">
-              <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><Sparkles className="size-4" /></span>
+          <header className="flex min-h-[76px] shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 xl:px-7" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><Sparkles className="size-4" /></span>
               <div>
               <h2 className="text-[17px] font-semibold leading-tight text-slate-950">Kadria</h2>
               <p className="mt-0.5 text-[13px] leading-snug text-[#9ca3af]">
@@ -738,13 +738,13 @@ export default function KadriaAssistantWidget() {
               </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-start gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
                 onClick={minimize}
                 aria-label="Réduire l'Assistant Kadria"
                 title="Réduire"
-                className="rounded-md p-1.5 text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
+                className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 focus-visible:outline-offset-2"
               >
                 —
               </button>
@@ -752,14 +752,14 @@ export default function KadriaAssistantWidget() {
                 type="button"
                 onClick={closeCollaborator}
                 aria-label="Fermer l'Assistant Kadria"
-                className="rounded-md p-1.5 text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
+                className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 focus-visible:outline-offset-2"
               >
                 ✕
               </button>
             </div>
           </header>
 
-          <main ref={scrollRef} className="min-h-0 w-full max-w-full flex-1 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50 px-4 py-4">
+          <main ref={scrollRef} className="min-h-0 w-full max-w-full flex-1 space-y-5 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50 px-5 py-5">
             <section className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-xs font-medium text-slate-500">Contexte</p><p className="mt-1 text-sm font-semibold text-slate-900">{contextTitle}</p><p className="mt-1 text-xs text-slate-500">Actions adaptées à votre page actuelle.</p></section>
             {messages.length === 0 && (
               <div className="space-y-4 py-2">
@@ -821,13 +821,13 @@ export default function KadriaAssistantWidget() {
             {messages.map((m, i) => (
               <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                  className={`max-w-[92%] rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
                     m.role === 'user'
-                      ? 'bg-[#22c55e] text-[#05130d]'
-                      : 'border border-[rgba(255,255,255,0.08)] bg-[#17181b] text-[#f8fafc]'
+                      ? 'bg-emerald-500 text-emerald-950'
+                      : 'border border-slate-200 bg-white text-slate-800 shadow-sm'
                   }`}
                 >
-                  {m.role === 'assistant' && m.assistantTitle && <p className="mb-1 font-semibold text-[#f8fafc]">{m.assistantTitle}</p>}
+                  {m.role === 'assistant' && m.assistantTitle && <p className="mb-1.5 font-semibold text-slate-950">{m.assistantTitle}</p>}
                   {renderMessageContent(m.content)}
                 </div>
                 {m.role === 'assistant' && m.todayActions && m.todayActions.length > 0 && (
@@ -861,9 +861,9 @@ export default function KadriaAssistantWidget() {
                   </div>
                 )}
                 {m.role === 'assistant' && m.assistantSuggestions && m.assistantSuggestions.length > 0 && (
-                  <div className="mt-2 flex max-w-[85%] flex-wrap gap-1.5">
-                    {m.assistantSuggestions.map((suggestion) => <button key={suggestion.id} type="button" onClick={() => runAssistantAction(suggestion.action)} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600">{suggestion.label}</button>)}
-                  </div>
+                  <section aria-label="Suggestions" className="mt-3 max-w-[92%]"><p className="mb-1.5 text-xs font-semibold text-slate-500">Suggestions</p><div className="space-y-1.5">
+                    {m.assistantSuggestions.map((suggestion) => <button key={suggestion.id} type="button" onClick={() => runAssistantAction(suggestion.action)} className="group flex w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 focus-visible:outline-offset-2"><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-emerald-700"><Sparkles className="size-3.5" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-slate-800">{suggestion.label}</span>{suggestion.reason ? <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">{suggestion.reason}</span> : null}</span><span aria-hidden className="shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700">›</span></button>)}
+                  </div></section>
                 )}
                 {m.role === 'assistant' && renderProposedActionCard(m, i)}
               </div>
@@ -894,25 +894,25 @@ export default function KadriaAssistantWidget() {
             )}
           </main>
 
-          {messages.length > 0 && <div className="border-t border-slate-200 bg-white px-3 pt-3"><button type="button" onClick={clearConversation} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"><Trash2 className="size-3.5" />Effacer la conversation</button></div>}
           <footer
-            className="w-full max-w-full shrink-0 border-t border-slate-200 bg-white px-3 py-3"
+            className="w-full max-w-full shrink-0 border-t border-slate-200 bg-white px-5 py-3"
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
-            <form onSubmit={handleSubmit} className="flex w-full max-w-full items-center gap-2">
+            <form onSubmit={handleSubmit} className="flex w-full max-w-full flex-col gap-2 sm:flex-row sm:items-center">
+              {messages.length > 0 && <button type="button" onClick={clearConversation} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 focus-visible:outline-offset-2"><Trash2 className="size-3.5" />Effacer la conversation</button>}
               <input ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={quotaReached ? 'Limite mensuelle atteinte' : 'Écrivez votre question…'}
                 disabled={loading || quotaReached}
-                className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 disabled:opacity-60"
+                className="h-10 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 disabled:opacity-60"
               />
               <button
                 type="submit"
                 disabled={loading || quotaReached || !input.trim()}
                 aria-label="Envoyer le message"
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-semibold transition-colors ${
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-base font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 focus-visible:outline-offset-2 ${
                   input.trim() && !loading && !quotaReached
                     ? 'bg-[#22c55e] text-[#05130d] hover:bg-[#34d979]'
                     : 'bg-[#1f2937] text-[#6b7280]'

@@ -36,4 +36,12 @@ describe('collaborator structure', () => {
     expect(widget).toContain('assistantFollowUp')
     expect(widget).not.toContain('openaiResponse')
   })
+
+  it('keeps the desktop header and footer aligned with Shell dimensions', () => {
+    const widget = readFileSync(path.join(root, 'src/components/kadria-assistant/KadriaAssistantWidget.tsx'), 'utf8')
+    expect(widget).toContain('min-h-[76px]')
+    expect(widget).toContain('h-10 shrink-0 items-center justify-center')
+    expect(widget).toContain('flex-col gap-2 sm:flex-row sm:items-center')
+    expect(widget).toContain('aria-label="Suggestions"')
+  })
 })
