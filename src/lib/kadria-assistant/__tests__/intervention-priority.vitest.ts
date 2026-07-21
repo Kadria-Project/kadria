@@ -22,6 +22,14 @@ describe('collaborator intervention priority', () => {
     expect(ranked[0]).toMatchObject({ level: 'informational', isPrimary: false })
   })
 
+  it('keeps an observed result out of the next primary recommendation', () => {
+    const ranked = prioritizeInterventions([
+      { ...action('observed', 'quote_followup', 'low'), lifecycle: 'observed' as const },
+      action('quote', 'quote_followup', 'high'),
+    ])
+    expect(ranked.map((item) => item.id)).toEqual(['quote'])
+  })
+
   it('does not repeat the same actionable intervention in one result', () => {
     const duplicate = action('quote-bis', 'quote_followup', 'high')
     expect(prioritizeInterventions([action('quote', 'quote_followup', 'high'), duplicate])).toHaveLength(1)

@@ -9,6 +9,7 @@ import { computeSetupProgress } from '@/src/lib/setup-progress'
 import { getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { buildAutomaticTasks, calculateOpportunityScore } from '@/src/lib/commercial-actions'
 import { prioritizeInterventions, type CollaboratorInterventionLevel } from '@/src/lib/kadria-assistant/intervention-priority'
+import { describeQuoteRecommendation, type RecommendationLifecycle } from '@/src/lib/kadria-assistant/recommendation-lifecycle'
 
 type TodayActionPriority = 'high' | 'medium' | 'low'
 type TodayActionType =
@@ -27,7 +28,10 @@ interface TodayAction {
   observedFact?: string
   priorityReason?: string
   isPrimary?: boolean
-  status: 'ready' | 'blocked'
+  status: 'ready' | 'blocked' | 'observed'
+  lifecycle: RecommendationLifecycle
+  expectedObservation: string
+  executionEvidence?: string
   title: string
   description: string
   reason: string
@@ -184,6 +188,8 @@ export async function GET() {
         type: 'configuration',
         priority: 'high',
         status: 'blocked',
+        lifecycle: 'blocked',
+        expectedObservation: "Je vérifierai que l'URL est enregistrée avant de proposer un envoi.",
         title: "Ajouter l'URL avis Google",
         description: "Ajoutez votre lien d'avis Google pour pouvoir envoyer une demande d'avis depuis vos dossiers.",
         reason: "URL avis Google absente.",
@@ -198,6 +204,8 @@ export async function GET() {
         type: 'configuration',
         priority: 'medium',
         status: 'ready',
+        lifecycle: 'proposed',
+        expectedObservation: 'Je vérifierai la configuration enregistrée avant de recommander la prochaine étape.',
         title: 'Completer la configuration Kadria',
         description: sanitizeActionText(todoStep.description, `${todoStep.label} a completer.`),
         reason: `${todoStep.label} reste a completer.`,
@@ -221,6 +229,8 @@ export async function GET() {
         type: 'delivery_error',
         priority: 'high',
         status: 'ready',
+        lifecycle: 'proposed',
+        expectedObservation: "Je vérifierai si l'envoi peut être repris ou si les coordonnées doivent être corrigées.",
         title: activity.action === 'DEVIS_FOLLOW_UP_FAILED' ? 'Verifier une relance devis en echec' : "Verifier une demande d'avis en echec",
         description: sanitizeActionText(activity.description, "Une erreur d'envoi recente merite votre attention."),
         reason: 'Une action precedente a echoue et demande une verification manuelle.',
@@ -247,23 +257,68 @@ export async function GET() {
 
     followupCandidates.forEach(({ devis, state }) => {
       const project = projectById.get(devis.projectId)
+      const recommendation = describeQuoteRecommendation({
+        state,
+        hasClientEmail: hasText(devis.clientEmail),
+        lastFollowUpAt: devis.lastFollowUpAt,
+      })
+      if (!recommendation) return
+      const isBlocked = recommendation.lifecycle === 'blocked'
       actions.push({
         id: `quote-followup-${devis.id}`,
         type: 'quote_followup',
         priority: state.stage === 'j10_final' ? 'high' : 'medium',
-        status: 'ready',
-        title: 'Relancer un devis',
-        description: 'La relance se fera depuis la fiche projet avec confirmation avant envoi.',
-        reason: sanitizeActionText(state.reason, 'Devis envoye sans reponse recente.'),
+        status: isBlocked ? 'blocked' : 'ready',
+        lifecycle: recommendation.lifecycle,
+        expectedObservation: recommendation.expectedObservation,
+        executionEvidence: recommendation.executionEvidence,
+        title: isBlocked ? "Compléter l'e-mail client" : 'Relancer un devis',
+        description: isBlocked
+          ? "Complétez l'e-mail client dans le dossier avant de pouvoir envoyer une relance."
+          : 'La relance se fera depuis la fiche projet avec confirmation avant envoi.',
+        reason: recommendation.explanation,
         projectId: devis.projectId,
         devisId: devis.id,
         clientName: devis.clientName || formatClientName(project),
         eligible: true,
-        clientEmailPresent: true,
-        primaryActionLabel: 'Ouvrir le dossier et relancer',
+        clientEmailPresent: hasText(devis.clientEmail),
+        primaryActionLabel: isBlocked ? "Ouvrir le dossier pour compléter l'e-mail" : 'Ouvrir le dossier pour préparer la relance',
         primaryActionHref: `/dashboard-v2/projet/${devis.projectId}`,
       })
     })
+
+    const observedFollowup = devisList
+      .map((devis) => ({ devis, state: getQuoteFollowupState(devis) }))
+      .map(({ devis, state }) => ({
+        devis,
+        recommendation: describeQuoteRecommendation({ state, hasClientEmail: hasText(devis.clientEmail), lastFollowUpAt: devis.lastFollowUpAt }),
+      }))
+      .filter((candidate) => candidate.recommendation?.lifecycle === 'observed')
+      .sort((a, b) => new Date(b.devis.lastFollowUpAt || 0).getTime() - new Date(a.devis.lastFollowUpAt || 0).getTime())[0]
+
+    if (observedFollowup?.recommendation) {
+      const { devis, recommendation } = observedFollowup
+      const project = projectById.get(devis.projectId)
+      actions.push({
+        id: `quote-followup-observed-${devis.id}`,
+        type: 'quote_followup',
+        priority: 'low',
+        status: 'observed',
+        lifecycle: recommendation.lifecycle,
+        expectedObservation: recommendation.expectedObservation,
+        executionEvidence: recommendation.executionEvidence,
+        title: 'Relance enregistrée',
+        description: 'Le dossier reste sous observation : aucune nouvelle relance immédiate n’est proposée.',
+        reason: recommendation.explanation,
+        projectId: devis.projectId,
+        devisId: devis.id,
+        clientName: devis.clientName || formatClientName(project),
+        eligible: false,
+        clientEmailPresent: hasText(devis.clientEmail),
+        primaryActionLabel: 'Ouvrir le dossier pour suivre la réponse',
+        primaryActionHref: `/dashboard-v2/projet/${devis.projectId}`,
+      })
+    }
 
     if (hasText(artisanConfig?.googleReviewUrl)) {
       const reviewProject = projects.find((project) =>
@@ -278,6 +333,8 @@ export async function GET() {
           type: 'review_request',
           priority: 'medium',
           status: 'ready',
+          lifecycle: 'proposed',
+          expectedObservation: "Je vérifierai que la demande d'avis est enregistrée avant de recommander une nouvelle action.",
           title: 'Demander un avis Google',
           description: "L'envoi se fera depuis la fiche projet avec confirmation.",
           reason: 'Projet gagne, email client present, aucune demande envoyee.',
@@ -321,6 +378,8 @@ export async function GET() {
         type: 'priority_project',
         priority: 'medium',
         status: 'ready',
+        lifecycle: 'proposed',
+        expectedObservation: 'Je vérifierai les prochaines activités du dossier avant de recommander une action.',
         title: 'Ouvrir un dossier prioritaire',
         description: `Signal commercial fort detecte sur ${formatClientName(priorityProject.project)}.`,
         reason: `Score commercial estime a ${priorityProject.score}.`,
@@ -358,6 +417,8 @@ export async function GET() {
         type: 'tasks_overview',
         priority: 'low',
         status: 'ready',
+        lifecycle: 'proposed',
+        expectedObservation: 'Je vérifierai les tâches traitées avant de proposer une nouvelle priorité.',
         title: 'Voir mes taches a faire',
         description: `${todayTasks.length} action(s) a traiter aujourd'hui dans le suivi commercial.`,
         reason: 'Regroupe les priorites detectees dans votre suivi commercial.',

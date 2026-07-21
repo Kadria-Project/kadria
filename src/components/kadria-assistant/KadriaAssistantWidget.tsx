@@ -44,7 +44,10 @@ interface TodayActionCard {
   observedFact?: string;
   priorityReason?: string;
   isPrimary?: boolean;
-  status: 'ready' | 'blocked';
+  status: 'ready' | 'blocked' | 'observed';
+  lifecycle: 'proposed' | 'opened' | 'observed' | 'blocked' | 'obsolete';
+  expectedObservation: string;
+  executionEvidence?: string;
   title: string;
   description: string;
   reason: string;
@@ -688,6 +691,28 @@ export default function KadriaAssistantWidget() {
     closeCollaborator();
   }
 
+  function handleTodayActionNavigation(actionId: string) {
+    setMessages((previous) => {
+      const next = previous.map((message) => {
+        if (!message.todayActions) return message;
+        return {
+          ...message,
+          todayActions: message.todayActions.map((action) => action.id === actionId && action.lifecycle === 'proposed'
+            ? {
+                ...action,
+                lifecycle: 'opened' as const,
+                description: 'Dossier ouvert. Cette consultation ne confirme pas encore la réalisation de l’action.',
+                expectedObservation: 'Je vérifierai une preuve enregistrée après votre confirmation dans le dossier.',
+              }
+            : action),
+        };
+      });
+      savePersistedSession({ messages: next, usage });
+      return next;
+    });
+    closeCollaborator();
+  }
+
   function clearConversation() {
     if (!window.confirm('Effacer cette conversation locale ?')) return;
     setMessages([]);
@@ -723,7 +748,11 @@ export default function KadriaAssistantWidget() {
               >
                 {action.status === 'blocked'
                   ? 'Bloqué'
-                  : action.priority === 'high'
+                  : action.status === 'observed'
+                    ? 'Observée'
+                    : action.lifecycle === 'opened'
+                      ? 'Dossier ouvert'
+                      : action.priority === 'high'
                     ? 'À traiter'
                     : action.priority === 'medium'
                       ? 'À voir'
@@ -733,10 +762,12 @@ export default function KadriaAssistantWidget() {
             <p className="mt-2 text-xs leading-relaxed text-[#cbd5e1]">{action.description}</p>
             <p className="mt-2 text-[11px] leading-relaxed text-[#94a3b8]">{action.reason}</p>
             {action.priorityReason && <p className="mt-2 text-[11px] leading-relaxed text-[#cbd5e1]">Pourquoi maintenant : {action.priorityReason}</p>}
+            {action.executionEvidence && <p className="mt-2 text-[11px] leading-relaxed text-emerald-300">Preuve observée : {action.executionEvidence}</p>}
+            <p className="mt-2 text-[11px] leading-relaxed text-[#94a3b8]">Ensuite : {action.expectedObservation}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <a
                 href={action.primaryActionHref}
-                onClick={handleNavigationClick}
+                onClick={() => handleTodayActionNavigation(action.id)}
                 className="rounded-full bg-[#22c55e] px-3 py-1.5 text-xs font-semibold text-[#05130d] transition-colors hover:bg-[#34d979]"
               >
                 {action.primaryActionLabel}

@@ -4,12 +4,13 @@ export type PrioritizableIntervention = {
   id: string
   type: string
   priority: 'high' | 'medium' | 'low'
-  status: 'ready' | 'blocked'
+  status: 'ready' | 'blocked' | 'observed'
   title: string
   description: string
   reason: string
   primaryActionLabel: string
   primaryActionHref: string
+  lifecycle?: 'proposed' | 'opened' | 'observed' | 'blocked' | 'obsolete'
 }
 
 export type PrioritizedIntervention<T extends PrioritizableIntervention> = T & {
@@ -33,6 +34,7 @@ const priorityWeight: Record<PrioritizableIntervention['priority'], number> = {
 }
 
 function levelFor(item: PrioritizableIntervention): CollaboratorInterventionLevel {
+  if (item.lifecycle === 'observed' || item.lifecycle === 'obsolete') return 'informational'
   if (item.type === 'delivery_error') return 'critical'
   if (item.type === 'quote_followup') return item.priority === 'high' ? 'important' : 'useful'
   if (item.type === 'review_request' || item.type === 'configuration') return 'useful'
