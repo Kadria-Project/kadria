@@ -62,5 +62,9 @@ export function prioritizeInterventions<T extends PrioritizableIntervention>(ite
       || priorityWeight[a.priority] - priorityWeight[b.priority]
       || a.id.localeCompare(b.id))
 
-  return ranked.map((item, index) => ({ ...item, isPrimary: index === 0 && item.level !== 'informational' }))
+  const unique = ranked.filter(
+    (item, index, all) => all.findIndex((candidate) => candidate.type === item.type && candidate.primaryActionHref === item.primaryActionHref) === index,
+  )
+
+  return unique.map((item, index) => ({ ...item, isPrimary: index === 0 && item.level !== 'informational' }))
 }

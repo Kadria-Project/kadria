@@ -242,6 +242,7 @@ export async function GET() {
         const weightB = b.state.stage === 'j10_final' ? 0 : b.state.stage === 'j5_opened_no_decision' ? 1 : 2
         return weightA - weightB
       })
+      .filter(({ devis }, index, candidates) => candidates.findIndex((candidate) => candidate.devis.projectId === devis.projectId) === index)
       .slice(0, 2)
 
     followupCandidates.forEach(({ devis, state }) => {
