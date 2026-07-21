@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   getShellCapabilities,
@@ -9,10 +9,13 @@ const navigation = vi.hoisted(() => ({ pathname: '/dashboard-v2' }))
 
 vi.mock('next/navigation', () => ({
   usePathname: () => navigation.pathname,
+  useRouter: () => ({ push: vi.fn() }),
 }))
 
 import { ShellContextProvider, ShellContextSync, useShellContext } from '../ShellContextProvider'
 import { toKadriaAssistantPageContext } from '@/src/lib/kadria-assistant/page-context'
+import GlobalSearchDialog from '../../GlobalSearchDialog'
+import KadriaMobileNavigation from '../../KadriaMobileNavigation'
 
 function ContextProbe() {
   const { shellContext } = useShellContext()
@@ -73,6 +76,17 @@ describe('ShellContextProvider', () => {
 
   it('fails explicitly when consumed outside its provider', () => {
     expect(() => render(<ContextProbe />)).toThrow('useShellContext must be used inside ShellContextProvider.')
+  })
+
+  it('opens global search with Ctrl+K and from the mobile trigger', () => {
+    navigation.pathname = '/dashboard-v2'
+    render(<ShellContextProvider><KadriaMobileNavigation /><GlobalSearchDialog /></ShellContextProvider>)
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(screen.getByRole('dialog', { name: 'Recherche globale' })).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Recherche globale' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Rechercher' }))
+    expect(screen.getByRole('dialog', { name: 'Recherche globale' })).toBeInTheDocument()
   })
 })
 

@@ -14,6 +14,9 @@ type ScopedEnrichment = { scope: string; value: ShellContextEnrichment } | null
 type ShellContextProviderValue = {
   shellContext: ShellContextValue
   setShellContextEnrichment: (value: ShellContextEnrichment | null) => void
+  globalSearchOpen: boolean
+  openGlobalSearch: () => void
+  closeGlobalSearch: () => void
 }
 
 const ShellContext = createContext<ShellContextProviderValue | null>(null)
@@ -27,6 +30,7 @@ export function ShellContextProvider({ children }: { children: ReactNode }) {
   const baseContext = useMemo(() => getShellContextFromPathname(pathname), [pathname])
   const scope = contextScope(baseContext)
   const [enrichment, setEnrichment] = useState<ScopedEnrichment>(null)
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
 
   const setShellContextEnrichment = useCallback((value: ShellContextEnrichment | null) => {
     setEnrichment(value ? { scope, value } : null)
@@ -37,8 +41,8 @@ export function ShellContextProvider({ children }: { children: ReactNode }) {
     [baseContext, enrichment, scope],
   )
   const value = useMemo(
-    () => ({ shellContext, setShellContextEnrichment }),
-    [shellContext, setShellContextEnrichment],
+    () => ({ shellContext, setShellContextEnrichment, globalSearchOpen, openGlobalSearch: () => setGlobalSearchOpen(true), closeGlobalSearch: () => setGlobalSearchOpen(false) }),
+    [shellContext, setShellContextEnrichment, globalSearchOpen],
   )
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>
