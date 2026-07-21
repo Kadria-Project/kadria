@@ -210,7 +210,7 @@ export async function GET() {
 
     const failedActions = activities
       .filter((activity) => activity.action === 'DEVIS_FOLLOW_UP_FAILED' || activity.action === 'GOOGLE_REVIEW_REQUEST_FAILED')
-      .slice(0, 2)
+      .slice(0, 1)
 
     failedActions.forEach((activity, index) => {
       const projectId = String(activity.project_id || '')
