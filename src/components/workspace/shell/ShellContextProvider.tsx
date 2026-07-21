@@ -17,6 +17,9 @@ type ShellContextProviderValue = {
   globalSearchOpen: boolean
   openGlobalSearch: () => void
   closeGlobalSearch: () => void
+  quickCreateOpen: boolean
+  openQuickCreate: () => void
+  closeQuickCreate: () => void
 }
 
 const ShellContext = createContext<ShellContextProviderValue | null>(null)
@@ -31,6 +34,7 @@ export function ShellContextProvider({ children }: { children: ReactNode }) {
   const scope = contextScope(baseContext)
   const [enrichment, setEnrichment] = useState<ScopedEnrichment>(null)
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
 
   const setShellContextEnrichment = useCallback((value: ShellContextEnrichment | null) => {
     setEnrichment(value ? { scope, value } : null)
@@ -41,8 +45,8 @@ export function ShellContextProvider({ children }: { children: ReactNode }) {
     [baseContext, enrichment, scope],
   )
   const value = useMemo(
-    () => ({ shellContext, setShellContextEnrichment, globalSearchOpen, openGlobalSearch: () => setGlobalSearchOpen(true), closeGlobalSearch: () => setGlobalSearchOpen(false) }),
-    [shellContext, setShellContextEnrichment, globalSearchOpen],
+    () => ({ shellContext, setShellContextEnrichment, globalSearchOpen, openGlobalSearch: () => { setQuickCreateOpen(false); setGlobalSearchOpen(true) }, closeGlobalSearch: () => setGlobalSearchOpen(false), quickCreateOpen, openQuickCreate: () => { setGlobalSearchOpen(false); setQuickCreateOpen(true) }, closeQuickCreate: () => setQuickCreateOpen(false) }),
+    [shellContext, setShellContextEnrichment, globalSearchOpen, quickCreateOpen],
   )
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>

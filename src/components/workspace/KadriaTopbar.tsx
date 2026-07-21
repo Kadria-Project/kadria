@@ -12,7 +12,7 @@ interface KadriaTopbarProps {
 }
 
 export default function KadriaTopbar({ collaboratorOpen, onToggleCollaborator }: KadriaTopbarProps) {
-  const { shellContext, openGlobalSearch } = useShellContext();
+  const { shellContext, openGlobalSearch, openQuickCreate } = useShellContext();
   const workspace = shellContext.pageType === 'project'
     ? { eyebrow: 'Workspace / Projet', title: shellContext.entity?.label || 'Fiche projet' }
     : shellContext.pageType === 'settings'
@@ -41,7 +41,7 @@ export default function KadriaTopbar({ collaboratorOpen, onToggleCollaborator }:
                 <span className="w-40 text-left text-sm text-slate-500">Rechercher</span>
                 <kbd className="rounded border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-400">⌘K</kbd>
               </button>
-              <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-500 px-3.5 text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">
+              <button type="button" onClick={openQuickCreate} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-500 px-3.5 text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">
                 <Plus className="h-4 w-4" />
                 Créer
               </button>

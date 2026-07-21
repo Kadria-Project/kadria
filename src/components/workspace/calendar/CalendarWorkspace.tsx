@@ -273,15 +273,30 @@ export default function CalendarWorkspace() {
     }
     setSelectedEvent(event);
   };
-  const openCreate = (assignedUserId?: string) => {
+  const openCreate = useCallback((assignedUserId?: string, project?: AppointmentProjectOption | null) => {
     const now = new Date();
-    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: '', description: '', projectId: null, assignedUserId: assignedUserId || currentUserId || '', eventType: 'appointment' });
-    setSelectedProject(null);
+    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: project ? [project.siteAddress, project.city].filter(Boolean).join(', ') : '', description: '', projectId: project?.id || null, assignedUserId: assignedUserId || currentUserId || '', eventType: 'appointment' });
+    setSelectedProject(project || null);
     setLocationTouched(false);
     setCreateError(null);
     setSuccessMessage(null);
     setCreateOpen(true);
-  };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (searchParams.get('quickCreate') !== 'appointment' || createOpen) return;
+    const projectId = searchParams.get('projectId');
+    if (!projectId) { window.setTimeout(() => openCreate(), 0); return; }
+    const controller = new AbortController();
+    void fetch('/api/projects', { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => {
+        const project = Array.isArray(body?.projects) ? body.projects.find((item: AppointmentProjectOption) => item.id === projectId) : null;
+        openCreate(undefined, project || null);
+      })
+      .catch(() => { if (!controller.signal.aborted) window.setTimeout(() => openCreate(), 0); });
+    return () => controller.abort();
+  }, [createOpen, openCreate, searchParams]);
   const openEvent = (event: NormalizedCalendarEvent, edit = false) => {
     if (!event.rawAppointmentId) {
       setSelectedEvent(event);
