@@ -695,7 +695,7 @@ export default function KadriaAssistantWidget() {
           >
           <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[rgba(255,255,255,0.08)] bg-[#101113] px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
             <div className="min-w-0">
-              <h2 className="text-[19px] font-semibold leading-tight text-[#f8fafc]">Assistant Kadria</h2>
+              <h2 className="text-[17px] font-semibold leading-tight text-slate-950">Kadria</h2>
               <p className="mt-0.5 text-[13px] leading-snug text-[#9ca3af]">
                 Je vous aide à avancer sur vos dossiers.
               </p>
@@ -726,7 +726,7 @@ export default function KadriaAssistantWidget() {
             </div>
           </header>
 
-          <main ref={scrollRef} className="min-h-0 w-full max-w-full flex-1 space-y-3 overflow-y-auto overflow-x-hidden overscroll-contain bg-[#050505] px-4 py-3">
+          <main ref={scrollRef} className="min-h-0 w-full max-w-full flex-1 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50 px-4 py-4">
             {messages.length === 0 && (
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
@@ -766,13 +766,13 @@ export default function KadriaAssistantWidget() {
                   )}
                   {!todayActionsLoading && !todayActionsError && todayActions.length > 0 && renderTodayActionCards(todayActions.slice(0, 3))}
                 </div>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-1.5">
                   {contextualSuggestions.map((suggestion) => (
                     <button
                       key={suggestion.id}
                       type="button"
                       onClick={() => runSuggestion(suggestion)}
-                      className="group flex w-full items-center justify-between gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3.5 py-3 text-left text-xs leading-snug text-[#f8fafc] transition-colors hover:border-[#22c55e]/30 hover:bg-[#22c55e]/10 active:bg-[#22c55e]/15"
+                      className="group flex min-h-10 w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-left text-sm font-medium text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
                     >
                       <span>{suggestion.label}</span>
                       <span aria-hidden className="shrink-0 text-[#9ca3af] transition-colors group-hover:text-[#22c55e]">
@@ -883,7 +883,7 @@ export default function KadriaAssistantWidget() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={quotaReached ? 'Limite mensuelle atteinte' : 'Écrivez votre question…'}
                 disabled={loading || quotaReached}
-                className="min-w-0 flex-1 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-4 py-2.5 text-sm text-[#f8fafc] placeholder:text-[#9ca3af] outline-none transition-colors focus:border-[#22c55e]/50 disabled:opacity-60"
+                className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 disabled:opacity-60"
               />
               <button
                 type="submit"
