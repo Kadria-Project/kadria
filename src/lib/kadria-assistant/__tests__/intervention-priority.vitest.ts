@@ -26,4 +26,10 @@ describe('collaborator intervention priority', () => {
     const duplicate = action('quote-bis', 'quote_followup', 'high')
     expect(prioritizeInterventions([action('quote', 'quote_followup', 'high'), duplicate])).toHaveLength(1)
   })
+
+  it('keeps only the best immediate quote followup across distinct projects', () => {
+    const first = { ...action('quote-a', 'quote_followup', 'high'), primaryActionHref: '/dashboard-v2/projet/a' }
+    const second = { ...action('quote-b', 'quote_followup', 'high'), primaryActionHref: '/dashboard-v2/projet/b' }
+    expect(prioritizeInterventions([second, first]).map((item) => item.id)).toEqual(['quote-a'])
+  })
 })

@@ -66,5 +66,12 @@ export function prioritizeInterventions<T extends PrioritizableIntervention>(ite
     (item, index, all) => all.findIndex((candidate) => candidate.type === item.type && candidate.primaryActionHref === item.primaryActionHref) === index,
   )
 
-  return unique.map((item, index) => ({ ...item, isPrimary: index === 0 && item.level !== 'informational' }))
+  // The dashboard presents one immediate quote follow-up. Additional follow-ups
+  // remain available in commercial tracking, where their project evidence can
+  // be compared without competing with the primary intervention.
+  const dashboardActions = unique.filter(
+    (item, index, all) => item.type !== 'quote_followup' || all.findIndex((candidate) => candidate.type === 'quote_followup') === index,
+  )
+
+  return dashboardActions.map((item, index) => ({ ...item, isPrimary: index === 0 && item.level !== 'informational' }))
 }
