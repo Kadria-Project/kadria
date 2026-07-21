@@ -31,7 +31,7 @@ export default function KadriaTopbar() {
           title={workspace.title}
           actions={
             <>
-              <button type="button" data-global-search-trigger onClick={openGlobalSearch} className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 lg:flex" aria-label="Ouvrir la recherche globale">
+              <button type="button" data-global-search-trigger onClick={openGlobalSearch} className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 2xl:flex" aria-label="Ouvrir la recherche globale">
                 <Search className="h-4 w-4" />
                 <span className="w-40 text-left text-sm text-slate-500">Rechercher</span>
                 <kbd className="rounded border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-400">⌘K</kbd>
@@ -41,7 +41,7 @@ export default function KadriaTopbar() {
                 Créer
               </button>
               <NotificationBell variant="desktop" />
-              <Link href="/parametres" className="hidden items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 xl:flex">
+              <Link href="/parametres" className="hidden items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 2xl:flex">
                 Mon entreprise
                 <ChevronDown className="h-4 w-4 text-slate-400" />
               </Link>
