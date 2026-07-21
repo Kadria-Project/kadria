@@ -10,6 +10,7 @@ import { getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { buildAutomaticTasks, calculateOpportunityScore } from '@/src/lib/commercial-actions'
 import { prioritizeInterventions, type CollaboratorInterventionLevel } from '@/src/lib/kadria-assistant/intervention-priority'
 import { describeQuoteRecommendation, type RecommendationLifecycle } from '@/src/lib/kadria-assistant/recommendation-lifecycle'
+import { createInterventionId, interventionIdFromViewedDescription } from '@/src/lib/kadria-assistant/intervention-identity'
 
 type TodayActionPriority = 'high' | 'medium' | 'low'
 type TodayActionType =
@@ -28,6 +29,8 @@ interface TodayAction {
   observedFact?: string
   priorityReason?: string
   isPrimary?: boolean
+  interventionId: string
+  viewedAt?: string
   status: 'ready' | 'blocked' | 'observed'
   lifecycle: RecommendationLifecycle
   expectedObservation: string
@@ -134,6 +137,7 @@ export async function GET() {
           'DEVIS_FOLLOW_UP_SENT',
           'GOOGLE_REVIEW_REQUEST_FAILED',
           'GOOGLE_REVIEW_REQUEST_SENT',
+          'KADRIA_INTERVENTION_VIEWED',
         ])
         .order('created_at', { ascending: false })
         .limit(200)
@@ -144,6 +148,11 @@ export async function GET() {
     }
 
     const projectById = new Map(projects.map((project) => [project.id, project]))
+    const viewedAtByIntervention = new Map(
+      activities
+        .filter((activity) => activity.action === 'KADRIA_INTERVENTION_VIEWED' && interventionIdFromViewedDescription(activity.description))
+        .map((activity) => [interventionIdFromViewedDescription(activity.description) as string, activity.created_at || ''] as const)
+    )
     const reviewSentProjectIds = new Set(
       activities
         .filter((activity) => activity.action === 'GOOGLE_REVIEW_REQUEST_SENT' && hasText(activity.project_id))
@@ -181,9 +190,14 @@ export async function GET() {
       .sort((a, b) => a.priority - b.priority)[0]
 
     const actions: TodayAction[] = []
+    const withIntervention = (action: Omit<TodayAction, 'interventionId' | 'viewedAt'>): TodayAction => {
+      const interventionId = createInterventionId(action.type, action.projectId)
+      const viewedAt = viewedAtByIntervention.get(interventionId)
+      return { ...action, interventionId, ...(viewedAt ? { viewedAt } : {}) }
+    }
 
     if (!hasText(artisanConfig?.googleReviewUrl)) {
-      actions.push({
+      actions.push(withIntervention({
         id: 'configuration-google-review',
         type: 'configuration',
         priority: 'high',
@@ -197,9 +211,9 @@ export async function GET() {
         googleReviewConfigured: false,
         primaryActionLabel: 'Configurer',
         primaryActionHref: '/parametres?section=entreprise',
-      })
+      }))
     } else if (progress.percent < 100 && todoStep) {
-      actions.push({
+      actions.push(withIntervention({
         id: 'configuration-progress',
         type: 'configuration',
         priority: 'medium',
@@ -213,7 +227,7 @@ export async function GET() {
         googleReviewConfigured: true,
         primaryActionLabel: 'Completer',
         primaryActionHref: todoStep.href || '/parametres',
-      })
+      }))
     }
 
     const failedActions = activities
@@ -224,7 +238,7 @@ export async function GET() {
       const projectId = String(activity.project_id || '')
       const project = projectById.get(projectId)
       if (!project) return
-      actions.push({
+      actions.push(withIntervention({
         id: `failed-${projectId}-${index}`,
         type: 'delivery_error',
         priority: 'high',
@@ -241,7 +255,7 @@ export async function GET() {
         clientEmailPresent: hasText(project.client_email),
         primaryActionLabel: 'Ouvrir le dossier',
         primaryActionHref: `/dashboard-v2/projet/${projectId}`,
-      })
+      }))
     })
 
     const quoteRecommendations = devisList
@@ -276,12 +290,12 @@ export async function GET() {
       if (!recommendation) return
       const needsContactDetails = recommendation.lifecycle === 'inconclusive' && !hasText(devis.clientEmail) && state.canFollowUp
       const isInformational = recommendation.lifecycle === 'executed' || recommendation.lifecycle === 'observing' || recommendation.lifecycle === 'inconclusive'
-      actions.push({
+      actions.push(withIntervention({
         id: `quote-followup-${recommendation.lifecycle}-${devis.id}`,
         type: 'quote_followup',
         priority: isInformational ? 'low' : state.stage === 'j10_final' ? 'high' : 'medium',
         status: needsContactDetails ? 'blocked' : isInformational ? 'observed' : 'ready',
-        lifecycle: recommendation.lifecycle,
+        lifecycle: viewedAtByIntervention.has(createInterventionId('quote_followup', devis.projectId)) && recommendation.lifecycle === 'proposed' ? 'viewed' : recommendation.lifecycle,
         expectedObservation: recommendation.expectedObservation,
         executionEvidence: recommendation.executionEvidence,
         title: needsContactDetails
@@ -312,7 +326,7 @@ export async function GET() {
               ? 'Ouvrir le dossier pour suivre la réponse'
               : 'Ouvrir le dossier pour préparer la relance',
         primaryActionHref: `/dashboard-v2/projet/${devis.projectId}`,
-      })
+      }))
     })
 
     if (hasText(artisanConfig?.googleReviewUrl)) {
@@ -323,7 +337,7 @@ export async function GET() {
       )
 
       if (reviewProject) {
-        actions.push({
+        actions.push(withIntervention({
           id: `review-${reviewProject.id}`,
           type: 'review_request',
           priority: 'medium',
@@ -340,7 +354,7 @@ export async function GET() {
           clientEmailPresent: true,
           primaryActionLabel: "Ouvrir le dossier et demander l'avis",
           primaryActionHref: `/dashboard-v2/projet/${reviewProject.id}`,
-        })
+        }))
       }
     }
 
@@ -368,7 +382,7 @@ export async function GET() {
       .sort((a, b) => b.score - a.score)[0]
 
     if (priorityProject && priorityProject.score >= 70) {
-      actions.push({
+      actions.push(withIntervention({
         id: `priority-${priorityProject.project.id}`,
         type: 'priority_project',
         priority: 'medium',
@@ -384,7 +398,7 @@ export async function GET() {
         clientEmailPresent: hasText(priorityProject.project.client_email),
         primaryActionLabel: 'Ouvrir le dossier',
         primaryActionHref: `/dashboard-v2/projet/${priorityProject.project.id}`,
-      })
+      }))
     }
 
     const todayTasks = buildAutomaticTasks(
@@ -407,7 +421,7 @@ export async function GET() {
     )
 
     if (todayTasks.length > 0) {
-      actions.push({
+      actions.push(withIntervention({
         id: 'tasks-overview',
         type: 'tasks_overview',
         priority: 'low',
@@ -420,7 +434,7 @@ export async function GET() {
         eligible: true,
         primaryActionLabel: 'Ouvrir le tableau de bord',
         primaryActionHref: '/dashboard-v2',
-      })
+      }))
     }
 
     const uniqueActions = actions.filter(

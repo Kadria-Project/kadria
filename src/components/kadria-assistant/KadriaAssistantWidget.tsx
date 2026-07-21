@@ -44,6 +44,8 @@ interface TodayActionCard {
   observedFact?: string;
   priorityReason?: string;
   isPrimary?: boolean;
+  interventionId: string;
+  viewedAt?: string;
   status: 'ready' | 'blocked' | 'observed';
   lifecycle: 'proposed' | 'viewed' | 'executed' | 'observing' | 'resolved' | 'follow_up_required' | 'inconclusive' | 'blocked' | 'obsolete';
   expectedObservation: string;
@@ -704,16 +706,32 @@ export default function KadriaAssistantWidget() {
     closeCollaborator();
   }
 
-  function handleTodayActionNavigation(event: React.MouseEvent<HTMLAnchorElement>, action: TodayActionCard) {
+  async function handleTodayActionNavigation(event: React.MouseEvent<HTMLAnchorElement>, action: TodayActionCard) {
     event.preventDefault();
+    setTodayActionsError(null);
+    try {
+      const response = await fetch('/api/kadria-assistant/interventions/viewed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interventionId: action.interventionId, type: action.type, projectId: action.projectId }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) throw new Error(payload?.error || 'Consultation non enregistrée');
+      action = { ...action, lifecycle: action.lifecycle === 'proposed' ? 'viewed' : action.lifecycle, viewedAt: payload.viewedAt };
+    } catch (error) {
+      console.error('[KADRIA-ASSISTANT VIEWED]', { interventionId: action.interventionId, message: error instanceof Error ? error.message : String(error) });
+      setTodayActionsError('La consultation n’a pas été enregistrée. Réessayez avant d’ouvrir le dossier.');
+      return;
+    }
     const next = messages.map((message) => {
       if (!message.todayActions) return message;
       return {
         ...message,
         todayActions: message.todayActions.map((candidate) => candidate.id === action.id && candidate.lifecycle === 'proposed'
-          ? {
-              ...candidate,
-              lifecycle: 'viewed' as const,
+            ? {
+                ...candidate,
+                lifecycle: 'viewed' as const,
+                viewedAt: action.viewedAt,
               description: 'Dossier ouvert. Cette consultation ne confirme pas encore la réalisation de l’action.',
               expectedObservation: 'Je vérifierai une preuve enregistrée après votre confirmation dans le dossier.',
             }
