@@ -8,6 +8,7 @@ import { getCalendarIntegration } from '@/src/lib/google-calendar'
 import { computeSetupProgress } from '@/src/lib/setup-progress'
 import { getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { buildAutomaticTasks, calculateOpportunityScore } from '@/src/lib/commercial-actions'
+import { prioritizeInterventions, type CollaboratorInterventionLevel } from '@/src/lib/kadria-assistant/intervention-priority'
 
 type TodayActionPriority = 'high' | 'medium' | 'low'
 type TodayActionType =
@@ -22,6 +23,10 @@ interface TodayAction {
   id: string
   type: TodayActionType
   priority: TodayActionPriority
+  level?: CollaboratorInterventionLevel
+  observedFact?: string
+  priorityReason?: string
+  isPrimary?: boolean
   status: 'ready' | 'blocked'
   title: string
   description: string
@@ -60,12 +65,6 @@ interface ActivityRow {
   action: string | null
   description: string | null
   created_at: string | null
-}
-
-function getPriorityWeight(priority: TodayActionPriority) {
-  if (priority === 'high') return 0
-  if (priority === 'medium') return 1
-  return 2
 }
 
 function hasText(value: string | null | undefined) {
@@ -371,11 +370,11 @@ export async function GET() {
       (action, index, array) => array.findIndex((candidate) => candidate.id === action.id) === index
     )
 
-    uniqueActions.sort((a, b) => getPriorityWeight(a.priority) - getPriorityWeight(b.priority))
+    const prioritizedActions = prioritizeInterventions(uniqueActions)
 
     return NextResponse.json({
       success: true,
-      actions: uniqueActions.slice(0, 6),
+      actions: prioritizedActions.slice(0, 3),
     })
   } catch (error) {
     console.error('[KADRIA-ASSISTANT TODAY ACTIONS]', error instanceof Error ? error.message : String(error))

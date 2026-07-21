@@ -40,6 +40,10 @@ interface TodayActionCard {
   id: string;
   type: 'quote_followup' | 'review_request' | 'priority_project' | 'configuration' | 'delivery_error' | 'tasks_overview';
   priority: 'high' | 'medium' | 'low';
+  level?: 'critical' | 'important' | 'useful' | 'informational';
+  observedFact?: string;
+  priorityReason?: string;
+  isPrimary?: boolean;
   status: 'ready' | 'blocked';
   title: string;
   description: string;
@@ -696,13 +700,14 @@ export default function KadriaAssistantWidget() {
     return (
       <div className="mt-2 flex flex-col gap-2.5">
         {items.map((action) => (
-          <div
-            key={action.id}
-            className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111317] px-3.5 py-3"
-          >
+            <div
+              key={action.id}
+              className={`rounded-2xl border px-3.5 py-3 ${action.isPrimary ? 'border-emerald-400/40 bg-emerald-500/5' : 'border-[rgba(255,255,255,0.08)] bg-[#111317]'}`}
+            >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#f8fafc]">{action.title}</p>
+                {action.isPrimary && <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">À traiter en premier</p>}
                 {(action.clientName || action.projectId) && (
                   <p className="mt-1 text-xs text-[#9ca3af]">{action.clientName || 'Dossier prioritaire'}</p>
                 )}
@@ -727,6 +732,7 @@ export default function KadriaAssistantWidget() {
             </div>
             <p className="mt-2 text-xs leading-relaxed text-[#cbd5e1]">{action.description}</p>
             <p className="mt-2 text-[11px] leading-relaxed text-[#94a3b8]">{action.reason}</p>
+            {action.priorityReason && <p className="mt-2 text-[11px] leading-relaxed text-[#cbd5e1]">Pourquoi maintenant : {action.priorityReason}</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               <a
                 href={action.primaryActionHref}
