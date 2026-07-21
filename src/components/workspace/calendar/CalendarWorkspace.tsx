@@ -20,6 +20,7 @@ import TeamScheduleTimeline from './TeamScheduleTimeline';
 import type { CalendarView, PlanningInsights, TeamPlanningMember, TeamPlanningPermissions } from './calendar-workspace-types';
 import { addDays, eventDate, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
 import { deriveDayReadiness, deriveNextIntervention, deriveScheduleSituations, type ScheduleSituation } from '@/src/lib/calendar/schedule-situations';
+import { consumeAppointmentQuickCreateRoute, isAppointmentQuickCreate } from './quick-create-command';
 
 type CalendarMode = 'kadria' | 'google';
 type PlanningMode = 'personal' | 'team';
@@ -283,20 +284,14 @@ export default function CalendarWorkspace() {
     setCreateOpen(true);
   }, [currentUserId]);
 
-  useEffect(() => {
-    if (searchParams.get('quickCreate') !== 'appointment' || createOpen) return;
-    const projectId = searchParams.get('projectId');
-    if (!projectId) { window.setTimeout(() => openCreate(), 0); return; }
-    const controller = new AbortController();
-    void fetch('/api/projects', { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : null)
-      .then((body) => {
-        const project = Array.isArray(body?.projects) ? body.projects.find((item: AppointmentProjectOption) => item.id === projectId) : null;
-        openCreate(undefined, project || null);
-      })
-      .catch(() => { if (!controller.signal.aborted) window.setTimeout(() => openCreate(), 0); });
-    return () => controller.abort();
-  }, [createOpen, openCreate, searchParams]);
+  const quickCreateRequested = isAppointmentQuickCreate(searchParams.get('quickCreate'));
+  const closeCreate = () => {
+    if (creating) return;
+    setCreateOpen(false);
+    // The URL is a one-shot command from the shell. Consume it before the
+    // dialog closes so a subsequent render cannot reopen the form.
+    if (quickCreateRequested) router.replace(consumeAppointmentQuickCreateRoute());
+  };
   const openEvent = (event: NormalizedCalendarEvent, edit = false) => {
     if (!event.rawAppointmentId) {
       setSelectedEvent(event);
@@ -589,7 +584,7 @@ export default function CalendarWorkspace() {
           </div>
         </div>
       )}
-      {createOpen && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} error={createError} endIsValid={endIsValid} onClose={() => !creating && setCreateOpen(false)} onSubmit={() => void handleCreate()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
+      {(createOpen || quickCreateRequested) && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} error={createError} endIsValid={endIsValid} initialProjectId={quickCreateRequested ? searchParams.get('projectId') : null} onClose={closeCreate} onSubmit={() => void handleCreate()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
       {editingAppointmentId && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} deleting={deleting} error={createError} endIsValid={endIsValid} mode="edit" onClose={() => !creating && !deleting && setEditingAppointmentId(null)} onSubmit={() => void handleUpdate()} onDelete={() => void handleDelete()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
       {qualifyingEvent && <AppointmentQualificationModal event={qualifyingEvent} saving={qualificationSaving} error={qualificationError} onClose={() => !qualificationSaving && setQualifyingEvent(null)} onSave={(input) => void handleQualification(input)} />}
       {confirmingEvent && <AppointmentConfirmationModal event={confirmingEvent} saving={confirmationSaving} error={confirmationError} onClose={() => !confirmationSaving && setConfirmingEvent(null)} onSave={(input) => void handleConfirmation(input)} onSend={(input) => void handleConfirmationSend(input)} />}

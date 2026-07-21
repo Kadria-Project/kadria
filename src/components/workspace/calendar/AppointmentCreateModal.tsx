@@ -21,13 +21,14 @@ type Props = {
   onDelete?: () => void;
   onFieldChange: (field: Exclude<keyof AppointmentCreateForm, 'projectId'>, value: string) => void;
   onProjectChange: (project: AppointmentProjectOption | null) => void;
+  initialProjectId?: string | null;
 };
 
 const fieldClassName = 'w-full rounded-lg border border-[#3A4A59] bg-[#111F2E] px-3 py-2.5 text-sm text-[#F8FAFC] outline-none placeholder:text-[#8291A2] focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/25';
 const labelFor = (project: AppointmentProjectOption) => [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectTitle || 'Dossier';
 const detailsFor = (project: AppointmentProjectOption) => [project.projectTitle || project.projectType, project.city].filter(Boolean).join(' \u00b7 ');
 
-export default function AppointmentCreateModal({ form, selectedProject, creating, error, endIsValid, mode = 'create', deleting = false, onClose, onSubmit, onDelete, onFieldChange, onProjectChange }: Props) {
+export default function AppointmentCreateModal({ form, selectedProject, creating, error, endIsValid, mode = 'create', deleting = false, onClose, onSubmit, onDelete, onFieldChange, onProjectChange, initialProjectId = null }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const [projects, setProjects] = useState<AppointmentProjectOption[]>([]);
@@ -35,6 +36,9 @@ export default function AppointmentCreateModal({ form, selectedProject, creating
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const initialProjectIdRef = useRef(initialProjectId);
+  const selectedProjectRef = useRef(selectedProject);
+  const onProjectChangeRef = useRef(onProjectChange);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -43,7 +47,9 @@ export default function AppointmentCreateModal({ form, selectedProject, creating
         const response = await fetch('/api/projects', { signal: controller.signal });
         const json = await response.json();
         if (!response.ok || !json?.success) throw new Error('Unable to load projects.');
-        setProjects(Array.isArray(json.projects) ? json.projects : []);
+        const nextProjects: AppointmentProjectOption[] = Array.isArray(json.projects) ? json.projects : [];
+        setProjects(nextProjects);
+        if (initialProjectIdRef.current && !selectedProjectRef.current) onProjectChangeRef.current(nextProjects.find((project) => project.id === initialProjectIdRef.current) || null);
       } catch {
         if (!controller.signal.aborted) setProjects([]);
       } finally {
