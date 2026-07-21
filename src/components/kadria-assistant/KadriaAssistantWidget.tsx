@@ -691,26 +691,26 @@ export default function KadriaAssistantWidget() {
     closeCollaborator();
   }
 
-  function handleTodayActionNavigation(actionId: string) {
-    setMessages((previous) => {
-      const next = previous.map((message) => {
-        if (!message.todayActions) return message;
-        return {
-          ...message,
-          todayActions: message.todayActions.map((action) => action.id === actionId && action.lifecycle === 'proposed'
-            ? {
-                ...action,
-                lifecycle: 'viewed' as const,
-                description: 'Dossier ouvert. Cette consultation ne confirme pas encore la réalisation de l’action.',
-                expectedObservation: 'Je vérifierai une preuve enregistrée après votre confirmation dans le dossier.',
-              }
-            : action),
-        };
-      });
-      savePersistedSession({ messages: next, usage });
-      return next;
+  function handleTodayActionNavigation(event: React.MouseEvent<HTMLAnchorElement>, action: TodayActionCard) {
+    event.preventDefault();
+    const next = messages.map((message) => {
+      if (!message.todayActions) return message;
+      return {
+        ...message,
+        todayActions: message.todayActions.map((candidate) => candidate.id === action.id && candidate.lifecycle === 'proposed'
+          ? {
+              ...candidate,
+              lifecycle: 'viewed' as const,
+              description: 'Dossier ouvert. Cette consultation ne confirme pas encore la réalisation de l’action.',
+              expectedObservation: 'Je vérifierai une preuve enregistrée après votre confirmation dans le dossier.',
+            }
+          : candidate),
+      };
     });
+    setMessages(next);
+    savePersistedSession({ messages: next, usage });
     closeCollaborator();
+    window.location.assign(action.primaryActionHref);
   }
 
   function clearConversation() {
@@ -775,7 +775,7 @@ export default function KadriaAssistantWidget() {
             <div className="mt-3 flex flex-wrap gap-2">
               <a
                 href={action.primaryActionHref}
-                onClick={() => handleTodayActionNavigation(action.id)}
+                onClick={(event) => handleTodayActionNavigation(event, action)}
                 className="rounded-full bg-[#22c55e] px-3 py-1.5 text-xs font-semibold text-[#05130d] transition-colors hover:bg-[#34d979]"
               >
                 {action.primaryActionLabel}
