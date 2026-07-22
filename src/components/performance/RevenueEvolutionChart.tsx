@@ -47,6 +47,7 @@ export default function RevenueEvolutionChart({
 
   return (
     <ChartCard
+      className="h-full"
       title="Production observée"
       subtitle={periodLabel}
       loading={loading}

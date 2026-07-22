@@ -20,6 +20,7 @@ export default function ConversionFunnel({
 
   return (
     <ChartCard
+      className="h-full"
       title="Tunnel de conversion commercial"
       subtitle="Dossiers créés sur la période"
       loading={loading}
