@@ -39,19 +39,11 @@ function iconFor(item: HomeBriefItem, className: string): ReactNode {
 function PriorityCard({ item, index }: { item: HomeBriefItem; index: number }) {
   const style = priorityStyles[index] || priorityStyles[2]
   const context = item.context
-  return <article className={`grid gap-2.5 rounded-2xl border-l-[3px] p-3 shadow-[0_4px_18px_rgba(15,34,50,.035)] sm:grid-cols-[32px_52px_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-3.5 sm:py-3 ${style.accent}`}>
-    <span className={`grid size-6 place-items-center rounded-md text-[11px] font-bold ${style.number}`}>{index + 1}</span>
-    <span className={`grid size-[3.25rem] place-items-center rounded-full ${style.icon}`}>{iconFor(item, 'size-5')}</span>
-    <div className="min-w-0">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><h3 className="text-sm font-bold tracking-tight text-slate-950">{item.title}</h3><span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200/80">{item.proofLabel}</span></div>
-      {context ? <>
-        <p className="mt-0.5 text-xs font-semibold text-slate-800">{context.clientName}</p>
-        <p className="mt-px truncate text-[11px] text-slate-500">{context.projectTitle}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-500"><span className="font-semibold text-slate-700">{context.value}</span><span>{context.status}</span><span className="inline-flex items-center gap-1"><Clock3 className="size-3" />{context.timing}</span></div>
-      </> : <p className="mt-1 text-xs leading-5 text-slate-600">{item.observation}</p>}
-      <p className="mt-1 flex items-start gap-1.5 text-[11px] leading-4 text-slate-600"><span className={`mt-1 size-1.5 shrink-0 rounded-full ${style.dot}`} /><span><strong className={style.reason}>Pourquoi aujourd’hui :</strong> {item.whyItMatters}</span></p>
-    </div>
-    <Link href={item.action.href} className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-2 self-start whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-bold transition-colors sm:self-center ${style.cta}`}>{item.action.label}<ArrowRight className="size-3.5" /></Link>
+  return <article className={`flex h-full flex-col rounded-2xl border-l-[3px] p-4 shadow-[0_4px_18px_rgba(15,34,50,.035)] ${style.accent}`}>
+    <div className="grid grid-cols-[28px_48px_minmax(0,1fr)] items-center gap-2.5"><span className={`grid size-6 place-items-center rounded-md text-[11px] font-bold ${style.number}`}>{index + 1}</span><span className={`grid size-12 place-items-center rounded-full ${style.icon}`}>{iconFor(item, 'size-5')}</span><div className="min-w-0"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><h3 className="text-sm font-bold tracking-tight text-slate-950">{item.title}</h3><span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200/80">{item.proofLabel}</span></div></div></div>
+    {context ? <><div className="mt-3"><p className="text-xs font-semibold text-slate-800">{context.clientName}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">{context.projectTitle}</p></div><div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500"><span className="font-semibold text-slate-700">{context.value}</span><span>{context.status}</span><span className="inline-flex items-center gap-1"><Clock3 className="size-3" />{context.timing}</span></div></> : <p className="mt-3 text-xs leading-5 text-slate-600">{item.observation}</p>}
+    <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-4 text-slate-600"><span className={`mt-1 size-1.5 shrink-0 rounded-full ${style.dot}`} /><span><strong className={style.reason}>Pourquoi aujourd’hui :</strong> {item.whyItMatters}</span></p>
+    <Link href={item.action.href} className={`mt-auto inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition-colors ${style.cta}`}>{item.action.label}<ArrowRight className="size-3.5" /></Link>
   </article>
 }
 
@@ -94,10 +86,10 @@ function ActivitySummary({ brief, performance }: { brief: HomeBrief; performance
 
 export default function HomeWorkspace({ firstName, brief, loadState, onRefresh, performance }: Props) {
   const { openCollaborator } = useShellContext()
-  if (loadState === 'loading' || (!brief && loadState !== 'error')) return <div className="mx-auto max-w-[1320px] space-y-4 pb-6" aria-busy="true"><div className="h-24 animate-pulse rounded-2xl bg-slate-200" /><div className="h-72 animate-pulse rounded-2xl bg-slate-200" /></div>
+  if (loadState === 'loading' || (!brief && loadState !== 'error')) return <div className="w-full max-w-none space-y-4 pb-6" aria-busy="true"><div className="h-24 animate-pulse rounded-2xl bg-slate-200" /><div className="h-72 animate-pulse rounded-2xl bg-slate-200" /></div>
   if (!brief) return <div className="mx-auto max-w-[760px] rounded-2xl border border-slate-200 bg-white p-6"><CircleAlert className="size-5 text-amber-600" /><h2 className="mt-3 text-xl font-semibold text-slate-950">Le brief est momentanément indisponible.</h2><button type="button" onClick={() => void onRefresh()} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950"><RefreshCw className="size-4" />Réessayer</button></div>
   const priorities = brief.attention.slice(0, 3)
-  return <div className="mx-auto max-w-[1320px] space-y-4 pb-4">
+  return <div className="w-full max-w-none space-y-4 pb-4">
     <header><h1 className="text-2xl font-bold tracking-tight text-slate-950">Bonjour{firstName ? ` ${firstName.trim()}` : ''}.</h1><p className="mt-1 text-sm text-slate-600">Voici les {priorities.length || 3} actions les plus importantes pour bien avancer aujourd’hui.</p></header>
     <section className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-[0_4px_18px_rgba(15,34,50,.025)]"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-600"><TrendingUp className="size-5" /></span><div className="min-w-0"><p className="text-sm font-bold text-slate-950">{brief.impact.headline}</p><p className="mt-0.5 text-xs text-slate-500">{brief.impact.detail}</p></div></section>
     <section aria-labelledby="home-priorities"><div className="mb-2.5 flex items-center gap-2"><Sparkles className="size-4 text-emerald-600" /><h2 id="home-priorities" className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-600">Vos 3 priorités du jour</h2></div>{priorities.length ? <div className="grid gap-3 xl:grid-cols-3">{priorities.map((item, index) => <PriorityCard key={item.id} item={item} index={index} />)}</div> : <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">Votre journée est sous contrôle. Aucun dossier ne demande une décision immédiate.</div>}</section>
