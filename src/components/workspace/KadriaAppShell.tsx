@@ -82,6 +82,18 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
     dashboardModeRef.current = dashboardMode;
   }, [dashboardMode]);
 
+  useEffect(() => {
+    if (!desktop) return;
+    const htmlOverflow = document.documentElement.style.overflow;
+    const bodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = htmlOverflow;
+      document.body.style.overflow = bodyOverflow;
+    };
+  }, [desktop]);
+
   useEffect(() => registerNavigationHandler(requestNavigation), [registerNavigationHandler, requestNavigation]);
 
   useEffect(() => {
