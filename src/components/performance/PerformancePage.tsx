@@ -17,6 +17,7 @@ import PerformanceKPIs from './PerformanceKPIs'
 import InsightsPanel from './InsightsPanel'
 import PriorityActions from './PriorityActions'
 import TopOpportunitiesTable from './TopOpportunitiesTable'
+import { PERFORMANCE_TWO_COLUMN_GRID } from './performance-layout'
 import { derivePerformanceConclusion } from '@/src/lib/performance/performance-insights'
 import { fetchJsonWithTiming } from '@/src/lib/performance/client-timing'
 
@@ -102,7 +103,7 @@ export default function PerformancePage({ firstName }: { firstName: string | nul
             <PerformanceEvidence situation={conclusion} kpis={state.kpis ?? []} />
           </section>
 
-          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,13fr)_minmax(320px,7fr)]">
+          <div className={PERFORMANCE_TWO_COLUMN_GRID}>
             <RevenueEvolutionChart series={state.analytics?.revenueSeries ?? null} periodLabel={periodLabel} loading={loading} error={state.error} onRetry={retry} />
             <ConversionFunnel stages={state.analytics?.funnel ?? null} loading={loading} error={state.error} onRetry={retry} />
           </div>
