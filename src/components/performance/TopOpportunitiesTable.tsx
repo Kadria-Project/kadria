@@ -8,7 +8,7 @@ import { formatKPIValue } from '@/src/lib/performance/performance-format'
 import type { PerformanceOpportunity } from '@/src/lib/performance/performance-types'
 import { PERFORMANCE_RULES } from '@/src/lib/performance/performance-actions'
 
-const FULL_ROW_GRID = 'grid grid-cols-[minmax(110px,1fr)_minmax(160px,1.65fr)_minmax(100px,.9fr)_minmax(108px,.9fr)_76px_minmax(135px,1.1fr)_minmax(110px,.9fr)_118px] gap-x-2'
+const FULL_ROW_GRID = 'grid grid-cols-[minmax(110px,1fr)_minmax(160px,1.65fr)_minmax(100px,.9fr)_minmax(145px,.9fr)_76px_minmax(120px,1.1fr)_minmax(110px,.9fr)_118px] gap-x-2'
 const COMPACT_ROW_GRID = 'grid grid-cols-[minmax(96px,1fr)_minmax(120px,1.35fr)_minmax(84px,.8fr)_minmax(82px,.8fr)_minmax(110px,1fr)_118px] gap-x-2'
 const COMPACT_AT_WIDTH = 1040
 
