@@ -33,9 +33,10 @@ test('home remains independent from ArtisanDashboard', async () => {
   assert.equal(graph.has(legacyDashboard), false)
 })
 
-test('home requests only its dedicated brief contract', async () => {
+test('home requests its dedicated brief and the existing 30-day performance summary', async () => {
   const routeSource = await readFile(join(root, 'app/dashboard-v2/HomeWorkspaceRoute.tsx'), 'utf8')
-  assert.match(routeSource, /fetch\('\/api\/home-brief/)
+  assert.match(routeSource, /\/api\/home-brief/)
+  assert.match(routeSource, /\/api\/performance\?period=30d/)
   assert.doesNotMatch(routeSource, /operations-center|\/api\/(projects|events|usage\/monthly)/)
 })
 
