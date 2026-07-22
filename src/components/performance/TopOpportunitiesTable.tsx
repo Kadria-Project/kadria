@@ -35,9 +35,9 @@ function statusTone(status: string): string {
 function ValueCell({ value, showLabel }: { value: PerformanceOpportunity['value']; showLabel: boolean }) {
   if (value.amount === null) return <span className="text-sm text-slate-400">Valeur indisponible</span>
 
-  return <span title={value.label} className="whitespace-nowrap text-sm font-semibold text-slate-950">
-    {formatKPIValue(value.amount, 'currency')}
-    {showLabel && <span className="ml-1 text-[11px] font-normal text-slate-400">({value.label})</span>}
+  return <span title={value.label} className="block min-w-0 text-sm font-semibold text-slate-950">
+    <span className="whitespace-nowrap">{formatKPIValue(value.amount, 'currency')}</span>
+    {showLabel && <span className="mt-0.5 block truncate text-[11px] font-normal text-slate-400">{value.label}</span>}
   </span>
 }
 
