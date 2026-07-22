@@ -12,5 +12,5 @@ export default async function DashboardPerformancePage() {
   const session = await getSession()
   if (!session) redirect('/login')
 
-  return <PerformancePage />
+  return <PerformancePage firstName={session.firstName || null} />
 }

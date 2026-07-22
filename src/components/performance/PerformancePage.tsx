@@ -31,7 +31,7 @@ type FetchState = {
   error: string | null
 }
 
-export default function PerformancePage() {
+export default function PerformancePage({ firstName }: { firstName: string | null }) {
   const [period, setPeriod] = useState<PerformancePeriodKey>('30d')
   const [state, setState] = useState<FetchState>({ kpis: null, analytics: null, opportunities: null, insights: null, priorityActions: null, monthlyGoals: null, plan: null, error: null })
   const [reloadNonce, setReloadNonce] = useState(0)
@@ -83,7 +83,7 @@ export default function PerformancePage() {
               <h2 id="performance-executive-title" className="text-lg font-bold tracking-tight text-slate-950">La lecture dirigeant</h2>
               <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">Vue synthèse</span>
             </div>
-            <ExecutiveSummary kpis={state.kpis ?? []} analytics={state.analytics} />
+            <ExecutiveSummary firstName={firstName} kpis={state.kpis ?? []} analytics={state.analytics} />
           </section>
 
           <section aria-labelledby="performance-today-title">

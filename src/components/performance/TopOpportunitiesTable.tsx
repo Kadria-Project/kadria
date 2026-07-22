@@ -14,6 +14,19 @@ function scoreTone(score: number | null): string {
   return 'bg-slate-100 text-slate-600'
 }
 
+function statusTone(status: string): string {
+  const normalized = status.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  if (normalized.includes('nouveau')) return 'border-cyan-200 bg-cyan-50 text-cyan-700'
+  if (normalized.includes('rappeler')) return 'border-amber-200 bg-amber-50 text-amber-700'
+  if (normalized.includes('qualifie')) return 'border-violet-200 bg-violet-50 text-violet-700'
+  if (normalized.includes('devis')) return 'border-indigo-200 bg-indigo-50 text-indigo-700'
+  if (normalized.includes('gagne') || normalized.includes('accepte')) return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  if (normalized.includes('perdu') || normalized.includes('refuse')) return 'border-rose-200 bg-rose-50 text-rose-700'
+  if (normalized.includes('archive')) return 'border-slate-200 bg-slate-100 text-slate-600'
+  if (normalized.includes('en cours')) return 'border-blue-200 bg-blue-50 text-blue-700'
+  return 'border-slate-200 bg-slate-50 text-slate-600'
+}
+
 function ValueCell({ value }: { value: PerformanceOpportunity['value'] }) {
   if (value.amount === null) {
     return <span className="text-sm text-slate-400">Valeur indisponible</span>
@@ -38,8 +51,8 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
         </Link>
       </td>
       <td className="max-w-[320px] px-2 py-3.5 align-top text-sm text-slate-600" title={opportunity.projectTitle}><span className="block truncate">{opportunity.projectTitle}</span></td>
-      <td className="px-2 py-3.5 align-top"><span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{opportunity.statusLabel}</span></td>
-      <td className="px-2 py-3.5 align-top">
+      <td className="px-2 py-3.5 align-top"><span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusTone(opportunity.statusLabel)}`}>{opportunity.statusLabel}</span></td>
+      <td className="hidden 2xl:table-cell px-2 py-3.5 align-top">
         <ValueCell value={opportunity.value} />
       </td>
       <td className="px-2 py-3.5 align-top">
@@ -51,7 +64,7 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
         </span>
       </td>
       <td className="px-2 py-3.5 align-top text-sm text-slate-700">{opportunity.nextAction.label}</td>
-      <td className="px-2 py-3.5 align-top text-sm">
+      <td className="hidden 2xl:table-cell px-2 py-3.5 align-top text-sm">
         {opportunity.dueLabel ? (
           <span className="font-medium text-amber-700">{opportunity.dueLabel}</span>
         ) : (
@@ -61,7 +74,7 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
       <td className="py-3.5 pr-5 align-top text-right">
         <Link
           href={opportunity.nextAction.destination}
-          className="inline-flex items-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
+          className="inline-flex whitespace-nowrap items-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
         >
           Ouvrir le dossier
         </Link>
@@ -85,7 +98,7 @@ function OpportunityCard({ opportunity }: { opportunity: PerformanceOpportunity 
         </span>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-700">{opportunity.statusLabel}</span>
+        <span className={`rounded-full border px-2 py-0.5 font-medium ${statusTone(opportunity.statusLabel)}`}>{opportunity.statusLabel}</span>
         {opportunity.dueLabel && <span className="font-medium text-amber-700">{opportunity.dueLabel}</span>}
       </div>
       <div className="mt-2">
@@ -117,9 +130,9 @@ function TopOpportunitiesContent({ opportunities }: { opportunities: Performance
               <th scope="col" className="py-2 px-2">Projet</th>
               <th scope="col" className="py-2 px-2">Statut</th>
               <th scope="col" className="py-2 px-2">Valeur</th>
-              <th scope="col" className="py-2 px-2">Score</th>
+              <th scope="col" className="hidden 2xl:table-cell py-2 px-2">Score</th>
               <th scope="col" className="py-2 px-2">Prochaine action</th>
-              <th scope="col" className="py-2 px-2">Échéance</th>
+              <th scope="col" className="hidden 2xl:table-cell py-2 px-2">Échéance</th>
               <th scope="col" className="py-2 pr-4 text-right">Action</th>
             </tr>
           </thead>

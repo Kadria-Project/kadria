@@ -13,6 +13,7 @@ export default function ChartCard({
   emptyMessage,
   onRetry,
   className = '',
+  contentClassName = '',
   children,
   footer,
 }: {
@@ -24,6 +25,7 @@ export default function ChartCard({
   emptyMessage?: string
   onRetry?: () => void
   className?: string
+  contentClassName?: string
   children: ReactNode
   footer?: ReactNode
 }) {
@@ -43,7 +45,7 @@ export default function ChartCard({
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className={`mt-3 ${contentClassName}`}>
         {error ? (
           <div className="flex flex-col items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
             <p className="text-sm text-slate-700">Ce graphique est momentanément indisponible.</p>

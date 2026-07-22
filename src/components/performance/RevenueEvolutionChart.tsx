@@ -48,6 +48,7 @@ export default function RevenueEvolutionChart({
   return (
     <ChartCard
       className="h-full"
+      contentClassName="flex min-h-0 flex-1 flex-col"
       title="Production observée"
       subtitle={periodLabel}
       loading={loading}
@@ -70,7 +71,7 @@ export default function RevenueEvolutionChart({
     >
       {mode === 'single_event' && bestPoint ? <div className="flex min-h-32 items-center gap-5 rounded-xl border border-emerald-100 bg-emerald-50/50 px-5"><div className="grid size-12 place-items-center rounded-full bg-white text-emerald-700 shadow-sm">●</div><div><p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{bestPoint.label}</p><p className="mt-1 text-2xl font-bold text-slate-950">{formatKPIValue(bestPoint.revenue, 'currency')} TTC acceptés</p><p className="mt-1 text-xs text-slate-600">Un jalon observé, pas une tendance.</p></div></div> : series && series.points.length > 0 && mode !== 'empty_state' && (
         <>
-          <div className="h-32 w-full" role="img" aria-label={`Évolution du chiffre d'affaires : ${series.points.map((point) => `${point.label} ${formatKPIValue(point.revenue, 'currency')}`).join(', ')}`}>
+          <div className="min-h-40 w-full flex-1" role="img" aria-label={`Évolution du chiffre d'affaires : ${series.points.map((point) => `${point.label} ${formatKPIValue(point.revenue, 'currency')}`).join(', ')}`}>
             <ResponsiveContainer width="100%" height="100%">
               {mode === 'few_events' ? <BarChart data={series.points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} /><XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} /><YAxis tickFormatter={currencyAxis} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={56} /><Tooltip content={<TooltipContent />} /><Bar dataKey="revenue" fill="#059669" radius={[5, 5, 0, 0]} animationDuration={360} /></BarChart> : <AreaChart data={series.points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>

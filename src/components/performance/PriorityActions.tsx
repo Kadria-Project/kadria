@@ -29,6 +29,8 @@ const PRIORITY_TONE: Record<PriorityAction['priority'], string> = {
 
 function ActionRow({ action }: { action: PriorityAction }) {
   const Icon = ICONS[action.icon]
+  const destination = '/dashboard-v2/suivi'
+  const ctaLabel = action.type === 'callNewProspects' ? 'Voir les nouveaux dossiers' : action.type === 'followUpQuotes' ? 'Voir les devis' : 'Voir les dossiers'
   return (
     <li className="flex items-start gap-3 rounded-xl border border-slate-100 p-3">
       <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-600" aria-hidden="true">
@@ -48,11 +50,11 @@ function ActionRow({ action }: { action: PriorityAction }) {
         <p className="mt-0.5 text-xs text-slate-400">{action.detail}</p>
       </div>
       <Link
-        href={action.destination}
-        className="shrink-0 self-center rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
-        aria-label={`Traiter : ${action.label}`}
+        href={destination}
+        className="shrink-0 self-center whitespace-nowrap rounded-lg bg-slate-950 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
+        aria-label={`${ctaLabel} : ${action.label}`}
       >
-        Traiter
+        {ctaLabel}
       </Link>
     </li>
   )
