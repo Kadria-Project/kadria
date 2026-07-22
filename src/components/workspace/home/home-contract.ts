@@ -31,4 +31,8 @@ export type HomeBrief = {
   opportunity: HomeBriefItem | null
   risk: HomeBriefItem | null
   canWait: string
+  impact: { headline: string; detail: string }
+  agenda: Array<{ id: string; day: 'today' | 'tomorrow'; time: string; title: string; context: string; location: string | null }>
+  deferred: HomeBriefItem[]
+  summary: { quoteSent: number; quoteAccepted: number; activeProjects: number }
 }

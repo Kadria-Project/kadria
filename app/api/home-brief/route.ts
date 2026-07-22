@@ -82,7 +82,7 @@ export async function GET() {
     stage = 'build'
     const operations = await timer.measure('compute', async () => buildOperationsCenter({ projects, appointments, members: [], config: { artisanConfig: null, businessProfile: null, serviceProfilesCount: 0, googleCalendarConnected: true }, reviewRequestedProjectIds }))
     stage = 'contract'
-    const payload = { success: true, brief: buildHomeBrief(operations.recommendations, operations.generatedAt, projects) }
+    const payload = { success: true, brief: buildHomeBrief(operations.recommendations, operations.generatedAt, projects, appointments) }
     timer.log(payload, { projects: projects.length, appointments: appointments.length, activities: reviewRequestedProjectIds.size })
     return NextResponse.json(payload)
   } catch (error) {
