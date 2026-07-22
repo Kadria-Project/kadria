@@ -28,8 +28,8 @@ function ValueCell({ value }: { value: PerformanceOpportunity['value'] }) {
 
 function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpportunity; index: number }) {
   return (
-    <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/80">
-      <td className="py-2.5 pl-4 pr-2 align-top">
+    <tr className="border-b border-slate-100 last:border-0 hover:bg-emerald-50/40">
+      <td className="py-3.5 pl-5 pr-2 align-top">
         <Link
           href={`/dashboard-v2/projet/${opportunity.projectId}`}
           className="font-semibold text-slate-950 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
@@ -37,12 +37,12 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
           {opportunity.clientName}
         </Link>
       </td>
-      <td className="max-w-[320px] py-2.5 px-2 align-top text-sm text-slate-600" title={opportunity.projectTitle}><span className="block truncate">{opportunity.projectTitle}</span></td>
-      <td className="py-2.5 px-2 align-top"><span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{opportunity.statusLabel}</span></td>
-      <td className="py-2.5 px-2 align-top">
+      <td className="max-w-[320px] px-2 py-3.5 align-top text-sm text-slate-600" title={opportunity.projectTitle}><span className="block truncate">{opportunity.projectTitle}</span></td>
+      <td className="px-2 py-3.5 align-top"><span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{opportunity.statusLabel}</span></td>
+      <td className="px-2 py-3.5 align-top">
         <ValueCell value={opportunity.value} />
       </td>
-      <td className="py-2.5 px-2 align-top">
+      <td className="px-2 py-3.5 align-top">
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${scoreTone(opportunity.score)}`}
           aria-label={opportunity.score !== null ? `Score commercial ${opportunity.score} sur 100` : 'Score commercial indisponible'}
@@ -50,15 +50,15 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
           {opportunity.score !== null ? `${opportunity.score}/100` : '—'}
         </span>
       </td>
-      <td className="py-2.5 px-2 align-top text-sm text-slate-700">{opportunity.nextAction.label}</td>
-      <td className="py-2.5 px-2 align-top text-sm">
+      <td className="px-2 py-3.5 align-top text-sm text-slate-700">{opportunity.nextAction.label}</td>
+      <td className="px-2 py-3.5 align-top text-sm">
         {opportunity.dueLabel ? (
           <span className="font-medium text-amber-700">{opportunity.dueLabel}</span>
         ) : (
           <span className="text-slate-400">—</span>
         )}
       </td>
-      <td className="py-2.5 pr-4 align-top text-right">
+      <td className="py-3.5 pr-5 align-top text-right">
         <Link
           href={opportunity.nextAction.destination}
           className="inline-flex items-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
@@ -164,7 +164,7 @@ export default function TopOpportunitiesTable({
       initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_18px_rgba(15,34,50,.035)]"
     >
       <div>
         <h3 className="text-sm font-bold text-slate-950">Opportunités à fort potentiel</h3>

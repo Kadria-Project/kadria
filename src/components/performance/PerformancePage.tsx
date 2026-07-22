@@ -100,7 +100,7 @@ export default function PerformancePage() {
           </section>
 
           <section aria-labelledby="performance-proof-title">
-            <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Les preuves</p><h2 id="performance-proof-title" className="mt-1 text-base font-bold text-slate-950">Les chiffres qui confirment cette lecture</h2></div>
+            <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Ce qui explique cette situation</p><h2 id="performance-proof-title" className="mt-1 text-base font-bold text-slate-950">Pourquoi Kadria vous dit cela</h2></div>
             <PerformanceEvidence situation={conclusion} kpis={state.kpis ?? []} />
           </section>
 
