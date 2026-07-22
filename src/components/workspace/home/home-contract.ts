@@ -15,6 +15,13 @@ export type HomeBriefItem = {
   consequence: string
   recommendation: string
   action: HomeBriefAction
+  context?: {
+    clientName: string
+    projectTitle: string
+    status: string
+    value: string
+    timing: string
+  }
 }
 
 export type HomeBrief = {
