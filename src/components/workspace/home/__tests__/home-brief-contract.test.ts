@@ -15,7 +15,7 @@ function recommendation(overrides: Record<string, unknown> = {}) {
 
 test('exposes only the Home payload and caps attention at three items', () => {
   const brief = buildHomeBrief([recommendation(), recommendation({ id: 'r2', score: 90, category: 'Planning', priority: 'critical' }), recommendation({ id: 'r3', score: 70 }), recommendation({ id: 'r4', score: 60 })], '2026-07-20T10:00:00.000Z')
-  assert.deepEqual(Object.keys(brief).sort(), ['attention', 'canWait', 'generatedAt', 'opportunity', 'risk', 'situation'])
+  assert.deepEqual(Object.keys(brief).sort(), ['agenda', 'attention', 'canWait', 'deferred', 'generatedAt', 'impact', 'opportunity', 'risk', 'situation', 'summary'])
   assert.equal(brief.attention.length, 3)
   assert.deepEqual(Object.keys(brief.attention[0]).sort(), ['action', 'consequence', 'id', 'observation', 'proofLabel', 'proofLevel', 'recommendation', 'title', 'whyItMatters'])
   assert.equal('projects' in brief, false)

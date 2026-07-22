@@ -1,44 +1,92 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, ClipboardList, FilePlus2, FolderPlus, MapPin, RefreshCw, Sparkles, TrendingUp, UserPlus } from 'lucide-react'
+import { ArrowRight, CalendarCheck2, CalendarDays, CheckCircle2, CircleAlert, CircleDollarSign, ClipboardList, Clock3, FilePlus2, FileText, FileWarning, FolderPlus, MapPin, Phone, RefreshCw, Sparkles, TrendingUp, UserPlus, UserRound } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { HomeBrief, HomeBriefItem } from './home-contract'
 import { useShellContext } from '../shell/ShellContextProvider'
 
 type Props = { firstName: string | null; brief: HomeBrief | null; loadState: 'loading' | 'ready' | 'error'; onRefresh: () => Promise<void> }
 
-const tones = ['border-rose-100 bg-rose-50/60 text-rose-700', 'border-amber-100 bg-amber-50/60 text-amber-700', 'border-emerald-100 bg-emerald-50/60 text-emerald-700']
+const priorityStyles = [
+  { accent: 'border-emerald-300 bg-emerald-50/45', number: 'border-emerald-200 bg-emerald-600 text-white', icon: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500', cta: 'bg-emerald-600 text-white hover:bg-emerald-700', reason: 'text-emerald-700' },
+  { accent: 'border-orange-200 bg-white', number: 'border-orange-200 bg-orange-500 text-white', icon: 'bg-orange-100 text-orange-600', dot: 'bg-orange-500', cta: 'border border-slate-200 bg-white text-slate-800 hover:border-orange-200 hover:bg-orange-50', reason: 'text-orange-700' },
+  { accent: 'border-blue-200 bg-white', number: 'border-blue-200 bg-blue-600 text-white', icon: 'bg-blue-100 text-blue-600', dot: 'bg-blue-500', cta: 'border border-slate-200 bg-white text-slate-800 hover:border-blue-200 hover:bg-blue-50', reason: 'text-blue-700' },
+] as const
+
 const quickActions = [
-  { label: 'Nouveau devis', href: '/dashboard-v2/suivi', icon: FilePlus2 },
   { label: 'Nouveau dossier', href: '/dashboard-v2/clients', icon: FolderPlus },
+  { label: 'Nouveau devis', href: '/dashboard-v2/suivi', icon: FilePlus2 },
   { label: 'Créer un rendez-vous', href: '/dashboard-v2/agenda', icon: CalendarDays },
   { label: 'Ajouter un client', href: '/dashboard-v2/clients', icon: UserPlus },
   { label: 'Catalogue prestations', href: '/parametres/activite', icon: ClipboardList },
 ]
 
+function iconFor(item: HomeBriefItem, className: string): ReactNode {
+  const text = `${item.title} ${item.action.label}`.toLowerCase()
+  if (text.includes('rendez-vous') || text.includes('rendez vous')) return <CalendarCheck2 className={className} />
+  if (text.includes('relance') || text.includes('appel')) return <Phone className={className} />
+  if (text.includes('paiement')) return <CircleDollarSign className={className} />
+  if (text.includes('dossier') || text.includes('compléter')) return <FileWarning className={className} />
+  if (text.includes('client') || text.includes('avis')) return <UserRound className={className} />
+  return <FileText className={className} />
+}
+
 function PriorityCard({ item, index }: { item: HomeBriefItem; index: number }) {
-  return <article className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,34,50,.035)] sm:grid-cols-[42px_minmax(0,1fr)_auto] sm:items-center sm:p-5">
-    <span className={`grid size-10 place-items-center rounded-xl border text-sm font-bold ${tones[index]}`}>{index + 1}</span>
-    <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-base font-bold tracking-tight text-slate-950">{item.title}</h3><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{item.proofLabel}</span></div>{item.context ? <><p className="mt-1 text-sm font-semibold text-slate-800">{item.context.clientName}</p><p className="mt-0.5 text-xs text-slate-500">{item.context.projectTitle} · {item.context.status} · {item.context.value}</p></> : <p className="mt-1 text-sm text-slate-700">{item.observation}</p>}<p className="mt-2 text-xs leading-5 text-slate-500"><span className="font-semibold text-slate-700">Pourquoi aujourd’hui :</span> {item.whyItMatters}</p></div>
-    <Link href={item.action.href} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500">{item.action.label}<ArrowRight className="size-3.5" /></Link>
+  const style = priorityStyles[index] || priorityStyles[2]
+  const context = item.context
+  return <article className={`grid gap-3 rounded-2xl border-l-[3px] p-3.5 shadow-[0_4px_18px_rgba(15,34,50,.035)] sm:grid-cols-[38px_64px_minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:p-4 ${style.accent}`}>
+    <span className={`grid size-7 place-items-center rounded-lg text-xs font-bold ${style.number}`}>{index + 1}</span>
+    <span className={`grid size-14 place-items-center rounded-full ${style.icon}`}>{iconFor(item, 'size-6')}</span>
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><h3 className="text-sm font-bold tracking-tight text-slate-950">{item.title}</h3><span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200/80">{item.proofLabel}</span></div>
+      {context ? <>
+        <p className="mt-1 text-xs font-semibold text-slate-800">{context.clientName}</p>
+        <p className="mt-0.5 truncate text-[11px] text-slate-500">{context.projectTitle}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500"><span className="font-semibold text-slate-700">{context.value}</span><span>{context.status}</span><span className="inline-flex items-center gap-1"><Clock3 className="size-3" />{context.timing}</span></div>
+      </> : <p className="mt-1 text-xs leading-5 text-slate-600">{item.observation}</p>}
+      <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-4 text-slate-600"><span className={`mt-1 size-1.5 shrink-0 rounded-full ${style.dot}`} /><span><strong className={style.reason}>Pourquoi aujourd’hui :</strong> {item.whyItMatters}</span></p>
+    </div>
+    <Link href={item.action.href} className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-2 self-start whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-bold transition-colors sm:self-center ${style.cta}`}>{item.action.label}<ArrowRight className="size-3.5" /></Link>
   </article>
 }
 
 function CanWait({ brief }: { brief: HomeBrief }) {
-  const items = [brief.opportunity, brief.risk].filter((item): item is HomeBriefItem => Boolean(item)).slice(0, 2)
-  return <section aria-labelledby="home-can-wait"><div className="flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-600" /><h2 id="home-can-wait" className="text-xs font-bold uppercase tracking-[.14em] text-slate-600">Ce qui peut attendre</h2></div><div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm leading-6 text-slate-600">{brief.canWait}</p>{items.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{items.map((item) => <Link key={item.id} href={item.action.href} className="min-w-0 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"><span className="block truncate">{item.title}</span><span className="mt-0.5 block truncate font-normal text-slate-500">{item.recommendation}</span></Link>)}</div>}</div></section>
+  const deferred = brief.deferred.slice(0, 4)
+  return <section aria-labelledby="home-can-wait" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,34,50,.025)]">
+    <div className="flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-600" /><h2 id="home-can-wait" className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-500">Ce qui peut attendre</h2></div>
+    {deferred.length ? <div className="mt-2 divide-y divide-slate-100">{deferred.map((item) => <Link key={item.id} href={item.action.href} className="flex items-center gap-2.5 py-2 text-xs hover:text-emerald-700"><span className="grid size-6 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-500">{iconFor(item, 'size-3.5')}</span><span className="min-w-0 flex-1"><span className="block truncate font-semibold text-slate-800">{item.title}</span><span className="block truncate text-[11px] text-slate-500">{item.context ? `${item.context.clientName} · ${item.context.projectTitle}` : item.observation}</span></span><span className="shrink-0 text-[11px] text-slate-400">{item.recommendation}</span></Link>)}</div> : <p className="mt-3 text-xs leading-5 text-slate-500">{brief.canWait}</p>}
+  </section>
+}
+
+function Agenda({ brief }: { brief: HomeBrief }) {
+  const groups = [['today', 'Aujourd’hui'], ['tomorrow', 'Demain']] as const
+  return <section aria-labelledby="home-agenda" className="self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,34,50,.025)]">
+    <div className="flex items-center justify-between gap-3"><h2 id="home-agenda" className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-500">Mon agenda</h2><Link href="/dashboard-v2/agenda" className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800">Voir l’agenda <ArrowRight className="ml-1 inline size-3" /></Link></div>
+    {brief.agenda.length ? <div className="mt-3 space-y-3">{groups.map(([day, label]) => { const events = brief.agenda.filter((event) => event.day === day); if (!events.length) return null; return <div key={day}><p className="mb-2 text-[11px] font-bold text-slate-700">{label}</p><div className="space-y-2.5">{events.map((event) => <div key={event.id} className="grid grid-cols-[42px_minmax(0,1fr)] gap-2.5"><p className="pt-0.5 text-[11px] font-bold text-slate-900">{event.time}</p><div className="relative border-l-2 border-emerald-100 pl-3"><span className="absolute -left-[5px] top-1 size-2 rounded-full bg-emerald-500 ring-4 ring-white" /><div className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><p className="text-xs font-bold text-slate-800">{event.title}</p><span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">Rendez-vous</span></div><p className="mt-0.5 text-[11px] text-slate-500">{event.context}</p>{event.location ? <p className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400"><MapPin className="size-3" />{event.location}</p> : null}</div></div>)}</div></div> })}</div> : <p className="mt-4 text-xs text-slate-500">Aucun rendez-vous prévu aujourd’hui ou demain.</p>}
+  </section>
+}
+
+function ActivitySummary({ brief }: { brief: HomeBrief }) {
+  const metrics = [
+    ['Devis envoyés', brief.summary.quoteSent],
+    ['Devis acceptés', brief.summary.quoteAccepted],
+    ['Dossiers actifs', brief.summary.activeProjects],
+    ['Rendez-vous', brief.agenda.length],
+  ]
+  return <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,34,50,.025)]"><div className="flex items-center justify-between gap-3"><h2 className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-500">Résumé de votre activité</h2><span className="text-[10px] font-semibold text-slate-400">Données disponibles</span></div><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{metrics.map(([label, value]) => <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5"><p className="text-[10px] leading-4 text-slate-500">{label}</p><p className="mt-1 text-lg font-bold tracking-tight text-slate-950">{value}</p></div>)}</div></section>
 }
 
 export default function HomeWorkspace({ firstName, brief, loadState, onRefresh }: Props) {
   const { openCollaborator } = useShellContext()
-  if (loadState === 'loading' || (!brief && loadState !== 'error')) return <div className="mx-auto max-w-[1180px] space-y-4 pb-6" aria-busy="true"><div className="h-28 animate-pulse rounded-2xl bg-slate-200" /><div className="h-72 animate-pulse rounded-2xl bg-slate-200" /></div>
+  if (loadState === 'loading' || (!brief && loadState !== 'error')) return <div className="mx-auto max-w-[1320px] space-y-4 pb-6" aria-busy="true"><div className="h-24 animate-pulse rounded-2xl bg-slate-200" /><div className="h-72 animate-pulse rounded-2xl bg-slate-200" /></div>
   if (!brief) return <div className="mx-auto max-w-[760px] rounded-2xl border border-slate-200 bg-white p-6"><CircleAlert className="size-5 text-amber-600" /><h2 className="mt-3 text-xl font-semibold text-slate-950">Le brief est momentanément indisponible.</h2><button type="button" onClick={() => void onRefresh()} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950"><RefreshCw className="size-4" />Réessayer</button></div>
   const priorities = brief.attention.slice(0, 3)
-  return <div className="mx-auto max-w-[1180px] space-y-7 pb-7">
-    <header><h1 className="text-2xl font-bold tracking-tight text-slate-950">Bonjour{firstName ? ` ${firstName.trim()}` : ''}.</h1><p className="mt-2 text-sm text-slate-600">Voici les {priorities.length || 3} actions les plus importantes pour bien avancer aujourd’hui.</p></header>
-    <section className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="size-5" /></span><div><p className="text-sm font-bold text-slate-950">{brief.impact.headline}</p><p className="mt-0.5 text-xs text-slate-500">{brief.impact.detail}</p></div></section>
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,.78fr)]"><section aria-labelledby="home-priorities"><div className="mb-3 flex items-center gap-2"><Sparkles className="size-4 text-emerald-600" /><h2 id="home-priorities" className="text-xs font-bold uppercase tracking-[.14em] text-slate-600">Vos 3 priorités du jour</h2></div>{priorities.length ? <div className="space-y-2">{priorities.map((item, index) => <PriorityCard key={item.id} item={item} index={index} />)}</div> : <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">Votre journée est sous contrôle. Aucun dossier ne demande une décision immédiate.</div>}</section><section aria-labelledby="home-agenda" className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between gap-3"><h2 id="home-agenda" className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Mon agenda</h2><Link href="/dashboard-v2/agenda" className="text-xs font-bold text-emerald-700">Voir l’agenda →</Link></div>{brief.agenda.length ? <div className="mt-4 space-y-4">{brief.agenda.map((event) => <div key={event.id} className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 border-l-2 border-emerald-100 pl-3"><p className="text-xs font-bold text-slate-900">{event.time}</p><div><p className="text-sm font-bold text-slate-800">{event.title}</p><p className="text-xs text-slate-500">{event.context}</p>{event.location && <p className="mt-1 flex items-center gap-1 text-[11px] text-slate-400"><MapPin className="size-3" />{event.location}</p>}</div></div>)}</div> : <p className="mt-4 text-sm text-slate-500">Aucun rendez-vous prévu aujourd’hui ou demain.</p>}</section></div>
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.55fr)_minmax(300px,.85fr)]"><section><CanWait brief={{...brief, opportunity: null, risk: null, canWait: brief.deferred.length ? '' : brief.canWait}} />{brief.deferred.length ? <div className="-mt-2 rounded-b-2xl border border-t-0 border-slate-200 bg-white px-4 pb-3">{brief.deferred.map((item) => <Link key={item.id} href={item.action.href} className="flex items-center justify-between gap-2 border-t border-slate-100 py-2 text-xs text-slate-700"><span className="truncate">{item.title}</span><span className="shrink-0 text-slate-400">{item.recommendation}</span></Link>)}</div> : null}</section><section className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between"><h2 className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Résumé de votre activité</h2><span className="text-[10px] font-semibold text-slate-400">Données disponibles</span></div><div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] text-slate-500">Devis envoyés</p><p className="mt-1 text-xl font-bold text-slate-950">{brief.summary.quoteSent}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] text-slate-500">Devis acceptés</p><p className="mt-1 text-xl font-bold text-slate-950">{brief.summary.quoteAccepted}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] text-slate-500">Dossiers actifs</p><p className="mt-1 text-xl font-bold text-slate-950">{brief.summary.activeProjects}</p></div></div></section><section aria-labelledby="home-quick" className="rounded-2xl border border-slate-200 bg-white p-5"><h2 id="home-quick" className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Accès rapides</h2><div className="mt-2 space-y-1">{quickActions.map(({ label, href, icon: Icon }) => <Link key={label} href={href} className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 text-xs font-semibold text-slate-700 hover:text-emerald-700"><span className="flex items-center gap-2"><Icon className="size-4 text-slate-400" />{label}</span><ArrowRight className="size-3.5" /></Link>)}</div></section></div>
-    <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-5 py-4"><div><p className="text-sm font-bold text-slate-900">Besoin d’aide pour avancer ?</p><p className="text-xs text-slate-600">Demandez à Kadria ou parcourez vos actions recommandées.</p></div><button type="button" onClick={() => openCollaborator({ mode: 'actions' })} className="inline-flex items-center gap-2 rounded-lg border border-emerald-500 bg-white px-3 py-2 text-xs font-bold text-emerald-700">Ouvrir le collaborateur<ArrowRight className="size-3.5" /></button></section>
+  return <div className="mx-auto max-w-[1320px] space-y-5 pb-5">
+    <header><h1 className="text-2xl font-bold tracking-tight text-slate-950">Bonjour{firstName ? ` ${firstName.trim()}` : ''}.</h1><p className="mt-1 text-sm text-slate-600">Voici les {priorities.length || 3} actions les plus importantes pour bien avancer aujourd’hui.</p></header>
+    <section className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-[0_4px_18px_rgba(15,34,50,.025)]"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-600"><TrendingUp className="size-5" /></span><div className="min-w-0"><p className="text-sm font-bold text-slate-950">{brief.impact.headline}</p><p className="mt-0.5 text-xs text-slate-500">{brief.impact.detail}</p></div></section>
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.95fr)_minmax(300px,.95fr)]"><section aria-labelledby="home-priorities"><div className="mb-3 flex items-center gap-2"><Sparkles className="size-4 text-emerald-600" /><h2 id="home-priorities" className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-600">Vos 3 priorités du jour</h2></div>{priorities.length ? <div className="space-y-2">{priorities.map((item, index) => <PriorityCard key={item.id} item={item} index={index} />)}</div> : <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">Votre journée est sous contrôle. Aucun dossier ne demande une décision immédiate.</div>}</section><Agenda brief={brief} /></div>
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(260px,.9fr)_minmax(420px,1.35fr)_minmax(360px,1.25fr)]"><CanWait brief={brief} /><ActivitySummary brief={brief} /><section aria-labelledby="home-quick" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,34,50,.025)]"><h2 id="home-quick" className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-500">Accès rapides</h2><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">{quickActions.map(({ label, href, icon: Icon }) => <Link key={label} href={href} className="group flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-200 px-2 py-3 text-center transition-colors hover:border-emerald-300 hover:bg-emerald-50"><Icon className="size-6 text-slate-500 transition-colors group-hover:text-emerald-700" /><span className="mt-2 text-[10px] font-bold leading-3.5 text-slate-700">{label}</span></Link>)}</div></section></div>
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3"><div><p className="text-sm font-bold text-slate-900">Besoin d’aide pour avancer ?</p><p className="text-xs text-slate-600">Demandez à Kadria ou parcourez vos actions recommandées.</p></div><button type="button" onClick={() => openCollaborator({ mode: 'actions' })} className="inline-flex items-center gap-2 rounded-lg border border-emerald-500 bg-white px-3 py-2 text-xs font-bold text-emerald-700">Ouvrir le collaborateur<ArrowRight className="size-3.5" /></button></section>
   </div>
 }
