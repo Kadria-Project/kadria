@@ -32,10 +32,10 @@ export default function PerformanceKPIs({
     <div
       role="list"
       aria-label="Indicateurs clés de performance"
-      className="flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 lg:gap-4"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4"
     >
       {KPI_ORDER.map((id) => (
-        <div key={id} role="listitem" className="min-w-[240px] shrink-0 sm:min-w-0 sm:shrink">
+        <div key={id} role="listitem">
           <KPICard content={KPI_CONTENT[id]} result={byId.get(id)} loading={loading} error={error} onRetry={onRetry} />
         </div>
       ))}
