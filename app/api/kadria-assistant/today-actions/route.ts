@@ -13,6 +13,7 @@ import { describeQuoteRecommendation, type RecommendationLifecycle } from '@/src
 import { createInterventionId, interventionIdFromViewedDescription } from '@/src/lib/kadria-assistant/intervention-identity'
 import { buildQuoteInterventionMemory, type InterventionContinuity, type InterventionMemory } from '@/src/lib/kadria-assistant/intervention-memory'
 import { ARBITRATION_ACTIVITY_TYPES, readActiveInterventionArbitration, type ActiveInterventionArbitration } from '@/src/lib/kadria-assistant/intervention-arbitration'
+import { evaluateInterventionUtility, type InterventionUtility, type UtilityEvent } from '@/src/lib/kadria-assistant/intervention-utility'
 
 type TodayActionPriority = 'high' | 'medium' | 'low'
 type TodayActionType =
@@ -33,6 +34,7 @@ interface TodayAction {
   isPrimary?: boolean
   interventionId: string
   arbitration?: ActiveInterventionArbitration
+  utility?: InterventionUtility
   viewedAt?: string
   memory?: InterventionMemory
   continuity?: InterventionContinuity
@@ -165,6 +167,16 @@ export async function GET() {
       .map((activity) => String(activity.project_id))
     )
     const arbitrationActivities = activities.filter((activity) => ARBITRATION_ACTIVITY_TYPES.includes(activity.action || ''))
+    const quoteUtilityEvents: UtilityEvent[] = activities.flatMap<UtilityEvent>((activity) => {
+      const projectId = activity.project_id || ''
+      if (!projectId) return []
+      const interventionId = createInterventionId('quote_followup', projectId)
+      if (activity.action === 'KADRIA_INTERVENTION_VIEWED') return [{ interventionId, type: 'viewed' as const, createdAt: activity.created_at || '' }]
+      if (activity.action === 'DEVIS_FOLLOW_UP_SENT') return [{ interventionId, type: 'executed' as const, createdAt: activity.created_at || '' }]
+      const arbitration = readActiveInterventionArbitration([activity], interventionId)
+      return arbitration ? [{ interventionId, type: 'viewed' as const, createdAt: arbitration.createdAt, arbitrationType: arbitration.arbitrationType }] : []
+    })
+    const quoteUtility = evaluateInterventionUtility(quoteUtilityEvents)
 
     const progress = computeSetupProgress({
       businessProfile: businessProfileResult.row
@@ -313,7 +325,7 @@ export async function GET() {
       actions.push(withIntervention({
         id: `quote-followup-${recommendation.lifecycle}-${devis.id}`,
         type: 'quote_followup',
-        priority: isPriorityDisputed || isInformational ? 'low' : state.stage === 'j10_final' ? 'high' : 'medium',
+        priority: isPriorityDisputed || isInformational ? 'low' : state.stage === 'j10_final' ? 'high' : quoteUtility.priorityAdjustment === 1 ? 'high' : quoteUtility.priorityAdjustment === -1 ? 'low' : 'medium',
         status: needsContactDetails ? 'blocked' : isInformational || isAlreadyHandledWithoutEvidence ? 'observed' : 'ready',
         lifecycle: isAlreadyHandledWithoutEvidence ? 'inconclusive' : viewedAtByIntervention.has(interventionId) && recommendation.lifecycle === 'proposed' ? 'viewed' : recommendation.lifecycle,
         expectedObservation: recommendation.expectedObservation,
@@ -353,6 +365,8 @@ export async function GET() {
       }))
       const lastAction = actions[actions.length - 1]
       if (lastAction) {
+        lastAction.utility = quoteUtility
+        if (quoteUtility.priorityAdjustment !== 0) lastAction.reason = `${lastAction.reason} ${quoteUtility.explanationFacts[0]}`
         const resolvedAt = recommendation.lifecycle === 'resolved' ? (devis.acceptedAt || devis.declinedAt || undefined) : undefined
         const outcome = devis.acceptedAt || devis.accepted ? 'accepted' : devis.declinedAt ? 'declined' : undefined
         const built = buildQuoteInterventionMemory({ interventionId: lastAction.interventionId, projectId: devis.projectId, lifecycle: lastAction.lifecycle, loop: recommendation, quoteSentAt: devis.quoteSentAt, viewedAt: lastAction.viewedAt, lastFollowUpAt: devis.lastFollowUpAt, followUpCount: devis.followUpCount, resolvedAt, outcome, arbitration })

@@ -45,6 +45,7 @@ interface TodayActionCard {
   priorityReason?: string;
   isPrimary?: boolean;
   interventionId: string;
+  utility?: { confidenceLevel: 'insufficient' | 'limited' | 'usable'; utilityAssessment: string; priorityAdjustment: -1 | 0 | 1; explanationFacts: string[] };
   viewedAt?: string;
   continuity?: { label: string; summary: string };
   status: 'ready' | 'blocked' | 'observed';
@@ -827,6 +828,7 @@ export default function KadriaAssistantWidget() {
             {action.priorityReason && <p className="mt-2 text-[11px] leading-relaxed text-[#cbd5e1]">Pourquoi maintenant : {action.priorityReason}</p>}
             {action.executionEvidence && <p className="mt-2 text-[11px] leading-relaxed text-emerald-300">Preuve observée : {action.executionEvidence}</p>}
             {action.continuity && <p className="mt-2 text-[11px] leading-relaxed text-[#cbd5e1]"><span className="font-semibold">{action.continuity.label} :</span> {action.continuity.summary}</p>}
+            {action.utility && action.utility.priorityAdjustment !== 0 && <p className="mt-2 text-[11px] leading-relaxed text-[#94a3b8]"><span className="font-semibold">Historique comparable :</span> {action.utility.explanationFacts[0]}</p>}
             <p className="mt-2 text-[11px] leading-relaxed text-[#94a3b8]">Ensuite : {action.expectedObservation}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <a
