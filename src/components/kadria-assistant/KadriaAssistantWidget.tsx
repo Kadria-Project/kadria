@@ -243,6 +243,7 @@ export default function KadriaAssistantWidget() {
   const [quotaReached, setQuotaReached] = useState(false);
   const [todayActions, setTodayActions] = useState<TodayActionCard[]>([]);
   const [todayActionsLoading, setTodayActionsLoading] = useState(false);
+  const [todayActionsSettled, setTodayActionsSettled] = useState(false);
   const [todayActionsError, setTodayActionsError] = useState<string | null>(null);
   const [arbitratingId, setArbitratingId] = useState<string | null>(null);
   const [arbitrationMenuId, setArbitrationMenuId] = useState<string | null>(null);
@@ -279,6 +280,7 @@ export default function KadriaAssistantWidget() {
 
   async function loadTodayActions(requestContextKey = contextKey) {
     setTodayActionsLoading(true);
+    setTodayActionsSettled(false);
     setTodayActionsError(null);
 
     try {
@@ -301,7 +303,10 @@ export default function KadriaAssistantWidget() {
       setTodayActionsError('Je n’ai pas pu récupérer vos priorités pour le moment.');
       return [];
     } finally {
-      if (activeContextKeyRef.current === requestContextKey) setTodayActionsLoading(false);
+      if (activeContextKeyRef.current === requestContextKey) {
+        setTodayActionsLoading(false);
+        setTodayActionsSettled(true);
+      }
     }
   }
 
@@ -943,6 +948,12 @@ export default function KadriaAssistantWidget() {
               </p>
             )}
 
+            {open && (todayActionsLoading || !todayActionsSettled) && (
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600" aria-live="polite">
+                Je regarde vos priorités...
+              </p>
+            )}
+
             {activeMessages.length === 0 && (
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
@@ -969,13 +980,10 @@ export default function KadriaAssistantWidget() {
                       Ouvrir
                     </button>
                   </div>
-                  {todayActionsLoading && (
-                    <p className="mt-3 text-xs text-[#9ca3af]">Je regarde vos priorités...</p>
-                  )}
                   {!todayActionsLoading && todayActionsError && (
                     <p className="mt-3 text-xs text-red-300">{todayActionsError}</p>
                   )}
-                  {!todayActionsLoading && !todayActionsError && todayActions.length === 0 && (
+                  {todayActionsSettled && !todayActionsLoading && !todayActionsError && todayActions.length === 0 && (
                     <p className="mt-3 text-xs text-[#cbd5e1]">
                       Rien d&apos;urgent pour le moment.
                     </p>
