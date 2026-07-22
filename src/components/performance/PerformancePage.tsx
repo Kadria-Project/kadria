@@ -14,6 +14,11 @@ import ConversionFunnel from './ConversionFunnel'
 import CommercialExposureCard from './CommercialExposureCard'
 import ConversionDelayChart from './ConversionDelayChart'
 import PerformanceEvidence from './PerformanceEvidence'
+import ExecutiveSummary from './ExecutiveSummary'
+import PerformanceKPIs from './PerformanceKPIs'
+import InsightsPanel from './InsightsPanel'
+import PriorityActions from './PriorityActions'
+import TopOpportunitiesTable from './TopOpportunitiesTable'
 import { derivePerformanceConclusion } from '@/src/lib/performance/performance-insights'
 import { fetchJsonWithTiming } from '@/src/lib/performance/client-timing'
 
@@ -75,14 +80,44 @@ export default function PerformancePage() {
       <PerformanceHeader period={period} onPeriodChange={handlePeriodChange} />
       {isEmpty ? <PerformanceEmptyState /> : (
         <>
-          <PerformanceEvidence situation={conclusion} kpis={state.kpis ?? []} />
+          <section aria-labelledby="performance-executive-title">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <h2 id="performance-executive-title" className="text-lg font-bold tracking-tight text-slate-950">La lecture dirigeant</h2>
+              <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">Vue synthèse</span>
+            </div>
+            <ExecutiveSummary kpis={state.kpis ?? []} analytics={state.analytics} />
+          </section>
+
+          <section aria-labelledby="performance-today-title">
+            <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Ce qui compte aujourd&apos;hui</p><h2 id="performance-today-title" className="mt-1 text-base font-bold text-slate-950">Le contexte utile à la décision</h2></div>
+            <PerformanceKPIs kpis={state.kpis} loading={loading} error={state.error} onRetry={retry} />
+            <div className="mt-3"><CommercialExposureCard summary={state.analytics?.atRisk ?? null} loading={loading} /></div>
+          </section>
+
+          <section aria-labelledby="performance-why-title">
+            <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Pourquoi ces résultats ?</p><h2 id="performance-why-title" className="mt-1 text-base font-bold text-slate-950">Les signaux qui expliquent la situation</h2></div>
+            <InsightsPanel insights={state.insights} loading={loading} error={state.error} onRetry={retry} />
+          </section>
+
+          <section aria-labelledby="performance-proof-title">
+            <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Les preuves</p><h2 id="performance-proof-title" className="mt-1 text-base font-bold text-slate-950">Les chiffres qui confirment cette lecture</h2></div>
+            <PerformanceEvidence situation={conclusion} kpis={state.kpis ?? []} />
+          </section>
 
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,13fr)_minmax(320px,7fr)]">
             <RevenueEvolutionChart series={state.analytics?.revenueSeries ?? null} periodLabel={periodLabel} loading={loading} error={state.error} onRetry={retry} />
             <ConversionFunnel stages={state.analytics?.funnel ?? null} loading={loading} error={state.error} onRetry={retry} />
           </div>
 
-          <CommercialExposureCard summary={state.analytics?.atRisk ?? null} loading={loading} />
+          <section aria-labelledby="performance-levers-title">
+            <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Les leviers d&apos;amélioration</p><h2 id="performance-levers-title" className="mt-1 text-base font-bold text-slate-950">Ce que vous pouvez décider aujourd&apos;hui</h2></div>
+            <PriorityActions actions={state.priorityActions?.slice(0, 3) ?? null} impactAmount={state.analytics?.atRisk.amount ?? null} loading={loading} error={state.error} onRetry={retry} />
+          </section>
+
+          <section aria-labelledby="performance-opportunities-title">
+            <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Les dossiers à fort potentiel</p><h2 id="performance-opportunities-title" className="mt-1 text-base font-bold text-slate-950">Les prochaines actions commerciales à ne pas laisser passer</h2></div>
+            <TopOpportunitiesTable opportunities={state.opportunities} loading={loading} error={state.error} onRetry={retry} />
+          </section>
 
           <section className="border-t border-slate-200 pt-5" aria-labelledby="performance-exploration-title">
             <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Pour approfondir</p><h2 id="performance-exploration-title" className="mt-1 text-base font-bold text-slate-950">Les repères utiles à la progression</h2><p className="mt-1 text-sm text-slate-600">Des informations de méthode, sans concurrencer la conclusion principale.</p></div>
