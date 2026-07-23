@@ -1,4 +1,4 @@
-import type { OperationsCenterResult, OperationsWorkbenchItem } from '@/src/lib/recommendations'
+import type { OperationsCenterResult, OperationsWorkbenchCategory, OperationsWorkbenchItem } from '@/src/lib/recommendations'
 
 export type TasksWorkspaceData = Pick<OperationsCenterResult, 'generatedAt' | 'dataQuality' | 'workbench'>
 
@@ -13,6 +13,8 @@ export type WorkSituationAction = {
 
 export type WorkSituation = {
   id: string
+  workbenchCategory: OperationsWorkbenchCategory
+  sourceType?: string
   kind: WorkSituationKind
   observedFacts: string[]
   understanding: string
@@ -155,6 +157,8 @@ export function deriveWorkSituations(operationsCenter: TasksWorkspaceData | null
 
     return [{
       id: item.id,
+      workbenchCategory: item.category,
+      sourceType: item.sourceType || undefined,
       kind,
       observedFacts: [item.description || item.title],
       understanding: understandingBySource[item.sourceType || ''] || item.description || 'Kadria a détecté une action à poursuivre.',
