@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   BarChart3,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -32,7 +33,6 @@ const primaryItems = [
   { label: 'À faire', mode: 'tasks' as const, icon: ClipboardCheck },
   { label: 'Suivi', mode: 'commercial' as const, icon: FolderKanban },
   { label: 'Agenda', mode: 'calendar' as const, icon: CalendarDays },
-  { label: 'Clients', mode: 'clients' as const, icon: Users },
   { label: 'Performance', mode: 'value-report' as const, icon: BarChart3 },
 ];
 
@@ -46,6 +46,12 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
   const pathname = usePathname();
   const { shellContext } = useShellContext();
   const [logoutPending, setLogoutPending] = useState(false);
+  const commercialActive = Boolean(pathname?.startsWith('/dashboard-v2/suivi') || pathname?.startsWith('/dashboard-v2/clients'));
+  const commercialChildren = [
+    { label: 'Vue d’ensemble', href: '/dashboard-v2/suivi', active: pathname === '/dashboard-v2/suivi' },
+    { label: 'Tous les projets', href: '/dashboard-v2/suivi/projets', active: Boolean(pathname?.startsWith('/dashboard-v2/suivi/projets')) },
+    { label: 'Clients', href: '/dashboard-v2/clients', active: Boolean(pathname?.startsWith('/dashboard-v2/clients')) },
+  ];
 
   const logout = async () => {
     if (logoutPending) return;
@@ -99,21 +105,19 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
       <nav aria-label="Navigation principale" className="w-full space-y-1">
         {primaryItems.map((item) => {
           const Icon = item.icon;
-          const active = item.mode === dashboardModeFromPathname(pathname)
+          const active = item.mode === 'commercial'
+            ? commercialActive
+            : item.mode === dashboardModeFromPathname(pathname)
             && ['dashboard', 'tasks', 'tracking', 'calendar', 'clients', 'performance'].includes(shellContext.pageType);
+          const isCommercial = item.mode === 'commercial';
           return (
-            <Link
-              key={item.mode}
-              href={dashboardPathForMode(item.mode)}
-              title={compact ? item.label : undefined}
-              aria-label={item.label}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${
-                compact ? 'justify-center px-0' : ''
-              } ${active ? 'bg-emerald-400/15 text-emerald-300 shadow-[inset_3px_0_0_#34d399]' : 'text-slate-300 hover:bg-white/7 hover:text-white'}`}
-            >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
-              {!compact && <span className="truncate">{item.label}</span>}
-            </Link>
+            <div key={item.mode} className={isCommercial && !compact ? 'rounded-xl bg-white/[0.035] py-0.5' : ''}>
+              <Link href={dashboardPathForMode(item.mode)} title={compact ? item.label : undefined} aria-label={item.label} aria-current={active ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${compact ? 'justify-center px-0' : ''} ${active ? 'bg-emerald-400/15 text-emerald-300 shadow-[inset_3px_0_0_#34d399]' : 'text-slate-300 hover:bg-white/7 hover:text-white'}`}>
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                {!compact && <><span className="truncate">{item.label}</span>{isCommercial && <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${commercialActive ? 'rotate-0' : '-rotate-90'}`} />}</>}
+              </Link>
+              {isCommercial && commercialActive && !compact && <div className="mt-1 space-y-0.5 border-l border-emerald-300/25 py-1 pl-4 ml-5">{commercialChildren.map((child) => <Link key={child.href} href={child.href} aria-current={child.active ? 'page' : undefined} className={`flex min-h-9 items-center rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${child.active ? 'bg-emerald-400/15 text-emerald-200' : 'text-slate-400 hover:bg-white/7 hover:text-white'}`}><span className={`mr-2 size-1.5 rounded-full ${child.active ? 'bg-emerald-300' : 'bg-slate-600'}`} />{child.label}</Link>)}</div>}
+            </div>
           );
         })}
       </nav>
