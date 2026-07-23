@@ -48,7 +48,7 @@ export async function GET() {
     stage = 'normalize'
     const rawProjects = (result.data || []) as Row[]
     let projects = rawProjects.map(mapProject)
-    let reservations: string[] = result.missing.length ? ['Certaines informations commerciales ne sont pas disponibles ; les prioritÃ©s affichÃ©es peuvent Ãªtre incomplÃ¨tes.'] : []
+    let reservations: string[] = result.missing.length ? ['Certaines informations commerciales ne sont pas disponibles ; les priorit\u00e9s affich\u00e9es peuvent \u00eatre incompl\u00e8tes.'] : []
     let insufficient = false
     if (tenant?.tenantId && (!canReadAll || !supportsResponsibleUser)) {
       if (!canReadAssigned || !supportsResponsibleUser) { projects = []; reservations = ['Vos permissions ne permettent pas de vérifier les dossiers commerciaux disponibles.']; insufficient = true } else { const assigned = await getAssignedAppointmentProjectIds(tenant.tenantId, tenant.userId); projects = projects.filter((project) => { const row = rawProjects.find((candidate) => String(candidate.id || '') === project.id); return string(row || {}, 'responsible_user_id') === tenant.userId || assigned.has(project.id) }); reservations = ['Le suivi est limité aux dossiers qui vous sont affectés.'] }

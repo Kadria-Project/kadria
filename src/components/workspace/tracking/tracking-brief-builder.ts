@@ -1,4 +1,4 @@
-import type { TrackingBrief, TrackingMovement, TrackingOpportunity, TrackingPipelineStage, TrackingProjectRow, TrackingSlowdown } from './tracking-contract'
+import type { TrackingAnalysis, TrackingBrief, TrackingMovement, TrackingOpportunity, TrackingPipelineStage, TrackingProjectRow, TrackingSlowdown } from './tracking-contract'
 
 export type TrackingProjectInput = {
   id: string; status: string; clientName: string; clientFirstName: string; projectType: string; trade: string; budget: string; devisAmount: number; completenessScore: number; createdAt: string; updatedAt: string; callbackDate: string; quoteSentAt: string | null; acceptedAt: string | null; lastFollowUpAt: string | null
@@ -21,7 +21,7 @@ function clientLabel(project: TrackingProjectInput) { return [project.clientFirs
 function title(project: TrackingProjectInput) { return project.projectType || project.trade || 'Dossier commercial' }
 function destination(project: TrackingProjectInput, label: string, focus: string) { return { label, href: `/dashboard-v2/projet/${project.id}?focus=${focus}` } }
 function normalizedStatus(project: TrackingProjectInput) { const value = project.status.trim(); return ({ 'A rappeler': 'À rappeler', Qualifie: 'Qualifié', 'Devis envoye': 'Devis envoyé', 'Devis accepte': 'Devis accepté', Gagne: 'Gagné' } as Record<string, string>)[value] || value || 'Nouveau' }
-function isClosed(project: TrackingProjectInput) { return normalizedStatus(project) === 'Perdu' }
+function isClosed(project: TrackingProjectInput) { return ['Perdu', 'Archivé', 'Archive', 'Clôturé', 'Terminé'].includes(normalizedStatus(project)) }
 function quoteAmount(project: TrackingProjectInput) { return project.devisAmount > 0 ? project.devisAmount : 0 }
 function stageFor(project: TrackingProjectInput, now: Date): TrackingPipelineStage['key'] {
   const status = normalizedStatus(project)
@@ -40,7 +40,7 @@ function nextStepFor(project: TrackingProjectInput, now: Date) {
   if (stage === 'quote_sent') return destination(project, 'Suivre la réception du devis', 'quote_followup')
   if (stage === 'quote_to_prepare') return destination(project, 'Préparer le devis', 'quote')
   if (stage === 'qualification') return destination(project, project.callbackDate ? 'Préparer le rappel' : 'Définir un rappel', 'callback')
-  if (stage === 'won') return destination(project, 'Planifier le démarrage', 'planning')
+  if (stage === 'won') return destination(project, 'Examiner la prochaine étape', 'planning')
   return destination(project, 'Qualifier la demande', 'qualification')
 }
 
@@ -59,17 +59,35 @@ function movementFor(project: TrackingProjectInput, now: Date): TrackingMovement
   if (project.acceptedAt && acceptedDays !== null && acceptedDays <= 1) return { id: `accepted-${project.id}`, projectId: project.id, title: title(project), clientLabel: clientLabel(project), description: 'Le devis a été accepté.', occurredAt: project.acceptedAt, timeLabel: relativeLabel(project.acceptedAt, now), stageLabel: 'Gagné', tone: 'positive' }
   const quoteDays = daysSince(project.quoteSentAt, now)
   if (project.quoteSentAt && quoteDays !== null && quoteDays <= 1) return { id: `sent-${project.id}`, projectId: project.id, title: title(project), clientLabel: clientLabel(project), description: 'Le devis a été envoyé.', occurredAt: project.quoteSentAt, timeLabel: relativeLabel(project.quoteSentAt, now), stageLabel: 'Devis envoyé', tone: 'info' }
-  const updatedDays = daysSince(project.updatedAt, now)
-  if (updatedDays !== null && updatedDays <= 1) return { id: `updated-${project.id}`, projectId: project.id, title: title(project), clientLabel: clientLabel(project), description: 'Le dossier a été mis à jour.', occurredAt: project.updatedAt, timeLabel: relativeLabel(project.updatedAt, now), stageLabel: stageLabel(project, now), tone: 'info' }
+  const followUpDays = daysSince(project.lastFollowUpAt, now)
+  if (project.lastFollowUpAt && followUpDays !== null && followUpDays <= 1) return { id: `follow-up-${project.id}`, projectId: project.id, title: title(project), clientLabel: clientLabel(project), description: 'Une relance client a été enregistrée.', occurredAt: project.lastFollowUpAt, timeLabel: relativeLabel(project.lastFollowUpAt, now), stageLabel: stageLabel(project, now), tone: 'info' }
   return null
 }
 
 function rowFor(project: TrackingProjectInput, now: Date): TrackingProjectRow {
   const stage = stageFor(project, now)
-  const lastDate = project.acceptedAt || project.quoteSentAt || project.lastFollowUpAt || project.updatedAt || project.createdAt
   const slowdown = slowdownFor(project, now)
-  const positive = Boolean(project.acceptedAt)
-  return { id: project.id, title: title(project), clientLabel: clientLabel(project), stage, stageLabel: stageLabel(project, now), progress: pipeline.findIndex((item) => item.key === stage) + 1, lastActivity: { label: slowdown ? slowdown.reason : positive ? 'Devis accepté' : stage === 'quote_sent' ? 'Devis envoyé' : 'Dossier mis à jour', ageLabel: relativeLabel(lastDate, now), tone: slowdown ? 'attention' : positive ? 'positive' : 'neutral' }, nextStep: nextStepFor(project, now) }
+  const lastActivity = slowdown
+    ? { label: slowdown.reason, ageLabel: relativeLabel(project.lastFollowUpAt || project.quoteSentAt || project.createdAt, now), tone: 'attention' as const }
+    : project.acceptedAt
+      ? { label: 'Devis accepté', ageLabel: relativeLabel(project.acceptedAt, now), tone: 'positive' as const }
+      : project.quoteSentAt
+        ? { label: 'Devis envoyé', ageLabel: relativeLabel(project.quoteSentAt, now), tone: 'neutral' as const }
+        : project.lastFollowUpAt
+          ? { label: 'Relance client enregistrée', ageLabel: relativeLabel(project.lastFollowUpAt, now), tone: 'neutral' as const }
+          : { label: 'Demande créée', ageLabel: relativeLabel(project.createdAt, now), tone: 'neutral' as const }
+  return { id: project.id, title: title(project), clientLabel: clientLabel(project), stage, stageLabel: stageLabel(project, now), progress: pipeline.findIndex((item) => item.key === stage) + 1, lastActivity, nextStep: nextStepFor(project, now) }
+}
+
+function analysesFor(projects: TrackingProjectInput[], slowdowns: TrackingSlowdown[], now: Date): TrackingAnalysis[] {
+  const analyses: TrackingAnalysis[] = []
+  const strongestSlowdown = slowdowns.find((item) => item.evidenceLevel === 'strong')
+  if (strongestSlowdown) analyses.push({ id: 'main_risk', title: 'Risque principal', description: strongestSlowdown.reason, evidenceLevel: 'strong', tone: 'attention' })
+  const followUpTarget = projects.find((project) => stageFor(project, now) === 'waiting_client' && daysSince(project.quoteSentAt, now) !== null)
+  if (followUpTarget) analyses.push({ id: 'best_lever', title: 'Meilleur levier', description: `Relancer ${clientLabel(followUpTarget)} : le devis est en attente d’une décision client.`, evidenceLevel: 'strong', tone: 'positive' })
+  const progressedCount = projects.filter((project) => ['quote_sent', 'waiting_client'].includes(stageFor(project, now))).length
+  if (progressedCount >= 2) analyses.push({ id: 'observed_trend', title: 'Tendance observée', description: `${progressedCount} dossiers ont atteint l’étape devis ou attendent une réponse client.`, evidenceLevel: 'moderate', tone: 'neutral' })
+  return analyses.slice(0, 3)
 }
 
 function opportunityFor(project: TrackingProjectInput, now: Date): TrackingOpportunity | null {
@@ -91,8 +109,10 @@ export function buildTrackingBrief(projects: TrackingProjectInput[], input: { no
   const stages = pipeline.map((item) => { const rows = visibleProjects.filter((project) => stageFor(project, now) === item.key); return { ...item, count: rows.length, quoteAmount: rows.reduce((sum, project) => sum + quoteAmount(project), 0) } })
   const slowdowns = visibleProjects.map((project) => slowdownFor(project, now)).filter((item): item is TrackingSlowdown => Boolean(item)).sort((a, b) => b.stalledForDays - a.stalledForDays).slice(0, 4)
   const movements = visibleProjects.map((project) => movementFor(project, now)).filter((item): item is TrackingMovement => Boolean(item)).sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()).slice(0, 4)
-  const rows = visibleProjects.map((project) => rowFor(project, now)).sort((a, b) => b.progress - a.progress || a.title.localeCompare(b.title)).slice(0, 5)
+  const activeProjects = visibleProjects.filter((project) => stageFor(project, now) !== 'won')
+  const projectsForTable = activeProjects.length ? activeProjects : visibleProjects
+  const rows = projectsForTable.map((project) => rowFor(project, now)).sort((a, b) => b.progress - a.progress || a.title.localeCompare(b.title)).slice(0, 5)
   const progressingCount = visibleProjects.filter((project) => !slowdowns.some((item) => item.projectId === project.id) && stageFor(project, now) !== 'new').length
   const decisionCount = visibleProjects.filter((project) => stageFor(project, now) === 'waiting_client' || project.completenessScore < 60).length
-  return { generatedAt: now.toISOString(), dataQuality: { level: input.insufficient ? 'insufficient' : reservations.length ? 'partial' : 'complete', reservations }, opportunities, workspace: { firstName: input.firstName || null, activeCount: visibleProjects.length, progressingCount, slowingCount: slowdowns.length, decisionCount, pipeline: stages, quoteValueInProgress: stages.filter((item) => !['new', 'qualification', 'won'].includes(item.key)).reduce((sum, item) => sum + item.quoteAmount, 0), progressedThroughQuoteCount: stages.filter((item) => ['quote_sent', 'waiting_client', 'won'].includes(item.key)).reduce((sum, item) => sum + item.count, 0), movements, slowdowns, projects: rows } }
+  return { generatedAt: now.toISOString(), dataQuality: { level: input.insufficient ? 'insufficient' : reservations.length ? 'partial' : 'complete', reservations }, opportunities, workspace: { firstName: input.firstName || null, activeCount: visibleProjects.length, progressingCount, slowingCount: slowdowns.length, decisionCount, pipeline: stages, quoteValueInProgress: stages.filter((item) => !['new', 'qualification', 'won'].includes(item.key)).reduce((sum, item) => sum + item.quoteAmount, 0), progressedThroughQuoteCount: stages.filter((item) => ['quote_sent', 'waiting_client', 'won'].includes(item.key)).reduce((sum, item) => sum + item.count, 0), movements, slowdowns, analyses: analysesFor(visibleProjects, slowdowns, now), projects: rows } }
 }

@@ -64,6 +64,14 @@ export type TrackingSlowdown = {
   href: string
 }
 
+export type TrackingAnalysis = {
+  id: 'observed_trend' | 'best_lever' | 'main_risk'
+  title: string
+  description: string
+  evidenceLevel: TrackingEvidenceLevel
+  tone: 'positive' | 'attention' | 'neutral'
+}
+
 export type TrackingWorkspace = {
   firstName: string | null
   activeCount: number
@@ -75,6 +83,7 @@ export type TrackingWorkspace = {
   progressedThroughQuoteCount: number
   movements: TrackingMovement[]
   slowdowns: TrackingSlowdown[]
+  analyses: TrackingAnalysis[]
   projects: TrackingProjectRow[]
 }
 
