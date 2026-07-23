@@ -123,7 +123,7 @@ export default function TeamScheduleTimeline({ view, selectedDate, events, membe
   }))), [columns, days, timed]);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)] sm:p-5">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)] sm:p-5 lg:min-h-[70vh]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="mr-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500"><UsersRound className="size-4 text-emerald-600" />Planning d’équipe</p>

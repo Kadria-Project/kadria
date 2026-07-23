@@ -7,7 +7,7 @@ import { durationMinutes, eventLabel, formatDuration, formatTime } from './calen
 type Props = { event: NormalizedCalendarEvent | null; onOpenProject: (event: NormalizedCalendarEvent) => void }
 
 export default function NextAppointmentPanel({ event, onOpenProject }: Props) {
-  if (!event) return <section id="workspace-section-next-appointment" className="rounded-2xl border border-slate-200 bg-white p-4"><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500"><BriefcaseBusiness className="size-4 text-blue-600" />Prochaine intervention</p><p className="mt-3 text-sm leading-6 text-slate-500">Aucune intervention à venir.</p></section>
+  if (!event) return null
 
   const statusPresentation = getAppointmentStatusPresentation(event.confirmation)
   const brief = buildAppointmentBrief(event)
