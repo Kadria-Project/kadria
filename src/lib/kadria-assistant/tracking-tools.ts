@@ -60,5 +60,5 @@ export async function getTrackingBriefForAssistant(session: AuthPayload): Promis
     reservations = ['Le suivi est limité aux dossiers qui vous sont affectés.']
     insufficient = !canReadAssigned
   }
-  return { kind: 'ok', brief: buildTrackingBrief(projects, { reservations, insufficient }) }
+  return { kind: 'ok', brief: buildTrackingBrief(projects, { reservations, insufficient, firstName: session.firstName || null }) }
 }

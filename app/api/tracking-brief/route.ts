@@ -54,7 +54,7 @@ export async function GET() {
       if (!canReadAssigned || !supportsResponsibleUser) { projects = []; reservations = ['Vos permissions ne permettent pas de vérifier les dossiers commerciaux disponibles.']; insufficient = true } else { const assigned = await getAssignedAppointmentProjectIds(tenant.tenantId, tenant.userId); projects = projects.filter((project) => { const row = rawProjects.find((candidate) => String(candidate.id || '') === project.id); return string(row || {}, 'responsible_user_id') === tenant.userId || assigned.has(project.id) }); reservations = ['Le suivi est limité aux dossiers qui vous sont affectés.'] }
     }
     stage = 'build'
-    const brief = buildTrackingBrief(projects, { reservations, insufficient })
+    const brief = buildTrackingBrief(projects, { reservations, insufficient, firstName: session.firstName || null })
     stage = 'contract'
     return NextResponse.json({ success: true, brief })
   } catch (error) {
