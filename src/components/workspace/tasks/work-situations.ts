@@ -60,6 +60,12 @@ const understandingBySource: Record<string, string> = {
   planning_conflict: 'Les interventions ne peuvent pas être tenues aux horaires actuels.',
   travel_warning: 'Le déplacement prévu semble trop contraint pour être fiable.',
   member_overloaded: 'La charge planifiée mérite d’être rééquilibrée avant de perturber la journée.',
+  quote_followup: 'La relance du devis n’a pas pu être envoyée au client.',
+  review_request: 'La demande d’avis client n’a pas pu être envoyée.',
+  won_project_followup: 'Le suivi de ce chantier n’a pas pu être envoyé.',
+  unassigned_project_alert: 'Ce dossier n’a pas pu être attribué automatiquement.',
+  appointment_reminder: 'Le rappel de rendez-vous n’a pas pu être envoyé.',
+  assignment_notification: 'La notification d’attribution n’a pas pu être envoyée.',
 }
 
 const consequenceBySource: Record<string, string> = {
@@ -71,6 +77,12 @@ const consequenceBySource: Record<string, string> = {
   appointment_address: 'Le rendez-vous risque de ne pas pouvoir être préparé correctement.',
   complete_information: 'La suite du dossier risque de reposer sur des informations incomplètes.',
   assign_responsible: 'Le dossier risque de rester sans suite claire.',
+  quote_followup: 'Le client risque de ne pas recevoir le suivi de son devis.',
+  review_request: 'Le client ne recevra pas la demande d’avis prévue.',
+  won_project_followup: 'Le chantier peut rester sans suivi alors qu’il doit avancer.',
+  unassigned_project_alert: 'Le dossier peut rester sans responsable clairement identifié.',
+  appointment_reminder: 'Le rendez-vous risque d’être oublié ou manqué.',
+  assignment_notification: 'La personne concernée risque de ne pas être informée à temps.',
 }
 
 const explicitActionLabels: Record<string, string> = {

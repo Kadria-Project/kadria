@@ -8,6 +8,7 @@ import { generateQuoteFollowupEmailForStage, getQuoteFollowupState, type QuoteFo
 import { getProjectDisplayTitle } from '@/src/lib/project-detail/project-headline'
 import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
+import { toUserFacingErrorMessage } from '@/src/lib/user-facing-errors'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext, tableExists, tableHasColumn, type TenantContext } from '@/src/lib/tenant-context'
 import { listTeamMembers } from '@/src/lib/team/service'
@@ -358,26 +359,10 @@ function formatRunStatusLabel(status: BusinessAutomationRunStatus): string {
 
 function mapAutomationErrorToLabel(message: string | null): string | null {
   if (!message) return null
-  switch (message) {
-    case 'CLIENT_EMAIL_MISSING':
-      return "Le client ne possede pas d'adresse email."
-    case 'GOOGLE_REVIEW_URL_MISSING':
-      return "Aucun lien d'avis Google n'est configure."
-    case 'RESEND_API_KEY_MISSING':
-      return "Le canal email n'est pas configure."
-    case 'PROJECT_NOT_FOUND':
-      return 'Le projet cible est introuvable.'
-    case 'DEVIS_NOT_FOUND':
-      return 'Le devis cible est introuvable.'
-    case 'LEGACY_ARTISAN_ID_MISSING':
-      return "Le tenant n'est pas relie a un artisan legacy exploitable."
-    case 'RUN_NOT_FOUND':
-      return "L'execution cible est introuvable."
-    default:
-      if (message.startsWith('CLIENT_EMAIL_')) return "Le client ne possede pas d'adresse email."
-      if (message.includes('plus necessaire')) return "L'action n'est plus necessaire."
-      return message
-  }
+  if (message.includes('plus necessaire')) return 'Cette action n’est plus nécessaire.'
+  if (message === 'GOOGLE_REVIEW_URL_MISSING') return 'Le lien de demande d’avis n’est pas encore configuré.'
+  if (message === 'LEGACY_ARTISAN_ID_MISSING') return 'Cette action n’est pas disponible pour le moment.'
+  return toUserFacingErrorMessage(message, 'automation')
 }
 
 function buildEntityHref(entityType: BusinessAutomationRunRecord['entityType'], payload: Record<string, unknown>, entityId: string): string | null {

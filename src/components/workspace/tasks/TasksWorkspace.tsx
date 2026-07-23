@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, Bot, CalendarDays, CheckCircle2, CircleAlert, Eye, Lightbulb, LoaderCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { toUserFacingErrorMessage } from '@/src/lib/user-facing-errors'
 import {
   deriveWorkCalmState,
   deriveWorkSituations,
@@ -147,6 +148,8 @@ export default function TasksWorkspace({ firstName, operationsCenter, loadState,
     plan: allSituations.filter((situation) => workLane(situation) === 'plan'),
     overdue: allSituations.filter((situation) => workLane(situation) === 'overdue'),
   }), [allSituations])
+  const todayLanes = useMemo(() => (['prepare', 'waiting', 'overdue'] as WorkLane[]).filter((lane) => lanes[lane].length > 0), [lanes])
+  const hasThisWeek = lanes.plan.length > 0
   const focusedSituations = useMemo(() => activeView === 'all' ? allSituations : lanes[activeView], [activeView, allSituations, lanes])
   const situations = useMemo(() => prioritizeWorkSituations(focusedSituations), [focusedSituations])
   const state = deriveWorkCalmState(loadState, operationsCenter, situations)
@@ -163,10 +166,10 @@ export default function TasksWorkspace({ firstName, operationsCenter, loadState,
     try {
       const response = await fetch(action.target, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
       const payload = await response.json().catch(() => null)
-      if (!response.ok || payload?.success === false) throw new Error(payload?.error || 'Kadria n’a pas pu terminer cette action.')
+      if (!response.ok || payload?.success === false) throw new Error(payload?.error || 'ACTION_FAILED')
       await onRefresh()
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Kadria n’a pas pu terminer cette action.')
+      setActionError(toUserFacingErrorMessage(error, 'automation'))
     } finally {
       setBusyAction(null)
     }
@@ -201,14 +204,14 @@ export default function TasksWorkspace({ firstName, operationsCenter, loadState,
           {actionError && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</p>}
         </section>
 
-        <section aria-label="Actions à traiter ensuite" className="space-y-2.5">
-          <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-700">📅 Aujourd’hui</p><p className="mt-0.5 text-xs text-slate-500">Les actions qui peuvent avancer ou qui ne doivent plus attendre.</p></div>
-          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-            {(['prepare', 'waiting', 'overdue'] as WorkLane[]).map((lane) => <SecondaryLane key={lane} lane={lane} situations={lanes[lane]} busyAction={busyAction} onShowAll={() => setView(lane)} onAction={(situation) => situation.primaryAction && void handleAction(situation, situation.primaryAction)} />)}
-          </div>
-          <div className="pt-0.5"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-700">📆 Cette semaine</p><p className="mt-0.5 text-xs text-slate-500">Les créneaux et interventions à organiser avant qu’ils ne bloquent la suite.</p></div>
-          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3"><SecondaryLane lane="plan" situations={lanes.plan} busyAction={busyAction} onShowAll={() => setView('plan')} onAction={(situation) => situation.primaryAction && void handleAction(situation, situation.primaryAction)} /></div>
-        </section>
+        {(todayLanes.length > 0 || hasThisWeek) && <section aria-label="Actions à traiter ensuite" className="space-y-2.5">
+          {todayLanes.length > 0 && <><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-700">📅 Aujourd’hui</p><p className="mt-0.5 text-xs text-slate-500">Les actions qui peuvent avancer ou qui ne doivent plus attendre.</p></div>
+          <div className={`grid gap-2.5 ${todayLanes.length === 1 ? 'grid-cols-1' : 'sm:grid-cols-2'} ${todayLanes.length === 2 ? 'xl:grid-cols-2' : todayLanes.length === 3 ? 'xl:grid-cols-3' : ''}`}>
+            {todayLanes.map((lane) => <SecondaryLane key={lane} lane={lane} situations={lanes[lane]} busyAction={busyAction} onShowAll={() => setView(lane)} onAction={(situation) => situation.primaryAction && void handleAction(situation, situation.primaryAction)} />)}
+          </div></>}
+          {hasThisWeek && <><div className="pt-0.5"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-700">📆 Cette semaine</p><p className="mt-0.5 text-xs text-slate-500">Les créneaux et interventions à organiser avant qu’ils ne bloquent la suite.</p></div>
+          <div className="grid grid-cols-1 gap-2.5"><SecondaryLane lane="plan" situations={lanes.plan} busyAction={busyAction} onShowAll={() => setView('plan')} onAction={(situation) => situation.primaryAction && void handleAction(situation, situation.primaryAction)} /></div></>}
+        </section>}
       </>}
 
       {state.kind === 'calm' && <section className="rounded-2xl border border-emerald-100 bg-emerald-50 px-6 py-8 text-center"><CheckCircle2 className="mx-auto size-7 text-emerald-700" aria-hidden="true" /><p className="mt-3 font-semibold text-emerald-950">Situation maîtrisée</p><p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-emerald-900">Les prochaines actions restent dans leurs workspaces respectifs tant qu’aucune décision n’est requise.</p></section>}
