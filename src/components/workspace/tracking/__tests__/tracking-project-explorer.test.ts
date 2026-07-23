@@ -4,6 +4,7 @@ import test from 'node:test'
 
 register('../../__tests__/typescript-resolution.loader.mjs', import.meta.url)
 const { buildTrackingExplorerItem } = (await import('../tracking-brief-builder')) as typeof import('../tracking-brief-builder')
+const explorerSource = await (await import('node:fs/promises')).readFile(new URL('../TrackingProjectsExplorer.tsx', import.meta.url), 'utf8')
 
 const project = (overrides: Record<string, unknown> = {}) => ({ id: 'p1', status: 'Qualifié', clientName: 'Martin', clientFirstName: 'Léa', projectType: 'Rénovation', trade: '', budget: '1 500–2 000 €', devisAmount: 0, completenessScore: 90, createdAt: '2026-07-01T00:00:00Z', updatedAt: '2026-07-20T00:00:00Z', callbackDate: '', quoteSentAt: null, acceptedAt: null, lastFollowUpAt: null, ...overrides })
 const at = new Date('2026-07-20T00:00:00Z')
@@ -29,4 +30,11 @@ test('keeps value, activity and status interpretations explicit', () => {
 test('does not use metadata updates as commercial activity', () => {
   const item = buildTrackingExplorerItem(project({ status: 'Nouveau', createdAt: '', updatedAt: '2026-07-20T00:00:00Z' }), { now: at })
   assert.equal(item.lastActivity.ageLabel, 'Aucune activité enregistrée')
+})
+
+test('switches the presentation from the available container width, not the viewport breakpoint', () => {
+  assert.match(explorerSource, /ResizeObserver/)
+  assert.match(explorerSource, /PROJECT_EXPLORER_COMPACT_WIDTH = 1180/)
+  assert.match(explorerSource, /Prochain pas : \{item\.nextStep\.label\}/)
+  assert.match(explorerSource, /\{compact && <div[^>]*>[\s\S]*Signal actuel[\s\S]*Action/)
 })
