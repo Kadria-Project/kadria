@@ -4,6 +4,17 @@ export type TrackingProjectInput = {
   id: string; status: string; clientName: string; clientFirstName: string; projectType: string; trade: string; budget: string; devisAmount: number; completenessScore: number; createdAt: string; updatedAt: string; callbackDate: string; quoteSentAt: string | null; acceptedAt: string | null; lastFollowUpAt: string | null
 }
 
+export type TrackingExplorerItem = {
+  id: string
+  title: string
+  clientLabel: string
+  stage: { key: 'new' | 'qualification' | 'quote_to_prepare' | 'quote_sent' | 'waiting_client' | 'won' | 'lost' | 'archived' | 'legacy'; label: string }
+  value: { amountLabel: string; typeLabel: 'Devis' | 'Budget estimé' | 'Valeur non renseignée' }
+  signal: { key: 'inactive' | 'quote_waiting' | 'ready_to_quote' | 'missing_information' | 'next_step_missing' | 'none'; label: string; tone: 'neutral' | 'attention' | 'positive' }
+  lastActivity: { label: string; ageLabel: string; tone: 'neutral' | 'attention' | 'positive' }
+  nextStep: { label: string; href: string }
+}
+
 const DAY = 86_400_000
 const pipeline: Array<Pick<TrackingPipelineStage, 'key' | 'label'>> = [
   { key: 'new', label: 'Nouveau' },
@@ -42,6 +53,63 @@ function nextStepFor(project: TrackingProjectInput, now: Date) {
   if (stage === 'qualification') return destination(project, project.callbackDate ? 'Préparer le rappel' : 'Définir un rappel', 'callback')
   if (stage === 'won') return destination(project, 'Examiner la prochaine étape', 'planning')
   return destination(project, 'Qualifier la demande', 'qualification')
+}
+
+function explorerStageFor(project: TrackingProjectInput, now: Date): TrackingExplorerItem['stage'] {
+  const status = normalizedStatus(project)
+  if (['Archivé', 'Archive'].includes(status)) return { key: 'archived', label: 'Archivé' }
+  if (['Perdu', 'Clôturé', 'Terminé'].includes(status)) return { key: 'lost', label: 'Perdu' }
+  const stage = stageFor(project, now)
+  if (stage === 'waiting_client') return { key: stage, label: 'En attente client' }
+  if (stage === 'won') return { key: stage, label: 'Gagné' }
+  if (stage === 'quote_sent') return { key: stage, label: 'Devis envoyé' }
+  if (stage === 'quote_to_prepare') return { key: stage, label: 'À chiffrer' }
+  if (stage === 'qualification') return { key: stage, label: 'Qualification' }
+  return status === 'Nouveau' ? { key: 'new', label: 'Nouveau' } : { key: 'legacy', label: 'Statut à vérifier' }
+}
+
+function commercialActivityFor(project: TrackingProjectInput, now: Date): TrackingExplorerItem['lastActivity'] {
+  const facts: Array<{ at: string | null; label: string; tone: TrackingExplorerItem['lastActivity']['tone'] }> = [
+    { at: project.acceptedAt, label: 'Devis accepté', tone: 'positive' },
+    { at: project.lastFollowUpAt, label: 'Relance enregistrée', tone: 'neutral' },
+    { at: project.quoteSentAt, label: 'Devis envoyé', tone: 'neutral' },
+    { at: project.createdAt || null, label: 'Dossier créé', tone: 'neutral' },
+  ]
+  const fact = facts.filter((item) => item.at && Number.isFinite(new Date(item.at).getTime())).sort((a, b) => new Date(b.at!).getTime() - new Date(a.at!).getTime())[0]
+  return fact?.at ? { label: fact.label, ageLabel: relativeLabel(fact.at, now), tone: fact.tone } : { label: '—', ageLabel: 'Aucune activité enregistrée', tone: 'neutral' }
+}
+
+function explorerValueFor(project: TrackingProjectInput): TrackingExplorerItem['value'] {
+  if (project.devisAmount > 0) return { amountLabel: new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(project.devisAmount) + ' €', typeLabel: 'Devis' }
+  if (project.budget.trim()) return { amountLabel: project.budget.trim(), typeLabel: 'Budget estimé' }
+  return { amountLabel: '—', typeLabel: 'Valeur non renseignée' }
+}
+
+export function buildTrackingExplorerItem(project: TrackingProjectInput, input: { now?: Date } = {}): TrackingExplorerItem {
+  const now = input.now || new Date()
+  const stage = explorerStageFor(project, now)
+  const activity = commercialActivityFor(project, now)
+  const quoteDays = daysSince(project.quoteSentAt, now)
+  const missingInformation = project.completenessScore > 0 && project.completenessScore < 60
+  const inactive = ['new', 'qualification'].includes(stage.key) && activity.ageLabel !== 'Aucune activité enregistrée' && daysSince(project.lastFollowUpAt || project.createdAt, now) !== null && daysSince(project.lastFollowUpAt || project.createdAt, now)! >= 10
+  const signal = stage.key === 'lost' ? { key: 'none' as const, label: 'Projet perdu', tone: 'attention' as const }
+    : stage.key === 'archived' ? { key: 'none' as const, label: 'Projet archivé', tone: 'neutral' as const }
+    : stage.key === 'won' ? { key: 'none' as const, label: 'Projet gagné, prochaine étape à examiner', tone: 'positive' as const }
+    : missingInformation ? { key: 'missing_information' as const, label: 'Informations à compléter', tone: 'attention' as const }
+    : stage.key === 'waiting_client' && quoteDays !== null ? { key: 'quote_waiting' as const, label: `Sans réponse depuis ${quoteDays} jours`, tone: 'attention' as const }
+    : stage.key === 'quote_sent' ? { key: 'quote_waiting' as const, label: 'Devis envoyé, réponse attendue', tone: 'neutral' as const }
+    : stage.key === 'quote_to_prepare' ? { key: 'ready_to_quote' as const, label: 'Prêt à chiffrer', tone: 'neutral' as const }
+    : inactive ? { key: 'inactive' as const, label: `Sans activité depuis ${daysSince(project.lastFollowUpAt || project.createdAt, now)} jours`, tone: 'attention' as const }
+    : stage.key === 'legacy' ? { key: 'next_step_missing' as const, label: 'Prochaine étape à examiner', tone: 'neutral' as const }
+    : { key: 'none' as const, label: 'Aucun signal particulier', tone: 'neutral' as const }
+  const nextStep = stage.key === 'lost' || stage.key === 'archived' || stage.key === 'won' ? destination(project, 'Examiner la prochaine étape', 'planning')
+    : missingInformation ? destination(project, 'Compléter le dossier', 'completion')
+    : stage.key === 'waiting_client' ? destination(project, 'Relancer le client', 'quote_followup')
+    : stage.key === 'quote_sent' ? destination(project, 'Suivre la réception du devis', 'quote_followup')
+    : stage.key === 'quote_to_prepare' ? destination(project, 'Préparer le devis', 'quote')
+    : stage.key === 'qualification' ? destination(project, project.callbackDate ? 'Préparer le rappel' : 'Définir la prochaine étape', project.callbackDate ? 'callback' : 'commercial')
+    : destination(project, 'Examiner la prochaine étape', 'commercial')
+  return { id: project.id, title: title(project), clientLabel: clientLabel(project), stage, value: explorerValueFor(project), signal, lastActivity: activity, nextStep }
 }
 
 function slowdownFor(project: TrackingProjectInput, now: Date): TrackingSlowdown | null {
