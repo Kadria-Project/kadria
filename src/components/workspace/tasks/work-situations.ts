@@ -1,4 +1,5 @@
 import type { OperationsCenterResult, OperationsWorkbenchCategory, OperationsWorkbenchItem } from '@/src/lib/recommendations'
+import { toUserFacingErrorMessage } from '../../../lib/user-facing-errors'
 
 export type TasksWorkspaceData = Pick<OperationsCenterResult, 'generatedAt' | 'dataQuality' | 'workbench'>
 
@@ -69,8 +70,12 @@ const understandingBySource: Record<string, string> = {
 }
 
 const consequenceBySource: Record<string, string> = {
+  prepare_quote: 'Le client peut continuer d’attendre son devis.',
   follow_up_quote: 'Sans relance, le dossier risque de perdre en dynamique commerciale.',
+  risk_followup: 'Le client peut se tourner vers un autre professionnel.',
+  set_callback: 'Le suivi risque d’être oublié.',
   schedule_intervention: 'Le chantier restera bloqué tant qu’aucun créneau n’est prévu.',
+  request_review: 'Le client ne recevra pas la demande d’avis prévue.',
   appointment_change_requested: 'Le client peut rester sans rendez-vous adapté.',
   appointment_confirmation: 'Le rendez-vous peut être manqué ou mobiliser inutilement un créneau.',
   planning_conflict: 'Deux interventions risquent de ne pas pouvoir être réalisées.',
@@ -83,6 +88,19 @@ const consequenceBySource: Record<string, string> = {
   unassigned_project_alert: 'Le dossier peut rester sans responsable clairement identifié.',
   appointment_reminder: 'Le rendez-vous risque d’être oublié ou manqué.',
   assignment_notification: 'La personne concernée risque de ne pas être informée à temps.',
+}
+
+function understandingFor(item: OperationsWorkbenchItem) {
+  if (item.source === 'automation_run') {
+    return understandingBySource[item.sourceType || ''] || toUserFacingErrorMessage(item.reason, 'automation')
+  }
+  return understandingBySource[item.sourceType || ''] || item.description || 'Kadria a détecté une action à poursuivre.'
+}
+
+function consequenceFor(item: OperationsWorkbenchItem) {
+  if (consequenceBySource[item.sourceType || '']) return consequenceBySource[item.sourceType || '']
+  if (item.source === 'automation_run') return 'Cette action risque de ne pas aboutir sans votre intervention.'
+  return item.reason || 'Le dossier risque de ne pas avancer sans votre intervention.'
 }
 
 const explicitActionLabels: Record<string, string> = {
@@ -173,9 +191,9 @@ export function deriveWorkSituations(operationsCenter: TasksWorkspaceData | null
       sourceType: item.sourceType || undefined,
       kind,
       observedFacts: [item.description || item.title],
-      understanding: understandingBySource[item.sourceType || ''] || item.description || 'Kadria a détecté une action à poursuivre.',
+      understanding: understandingFor(item),
       importance: item.reason || 'Cette situation demande une décision.',
-      consequence: consequenceBySource[item.sourceType || ''],
+      consequence: consequenceFor(item),
       recommendation: kind === 'recover'
         ? 'Je vous recommande de reprendre cette action avant qu’elle ne bloque la suite.'
         : kind === 'validate'

@@ -54,3 +54,13 @@ test('represents a failed automation as a recoverable situation', () => {
   assert.equal(situation.kind, 'recover')
   assert.equal(situation.primaryAction?.label, 'Réessayer l’envoi')
 })
+
+test('does not expose an automation provider error in the situation explanation', () => {
+  const [situation] = deriveWorkSituations(center([item({
+    id: 'invalid-recipient', category: 'attention', source: 'automation_run', sourceType: 'unknown_automation', canExecuteDirectly: true,
+    primaryActionRoute: '/api/automations/runs/run-1/retry', primaryActionType: null, reason: "Invalid 'to' field: recipient@example",
+  })]))
+  assert.match(situation.understanding, /adresse e-mail du client semble invalide/)
+  assert.equal(situation.understanding.includes("Invalid 'to'"), false)
+  assert.equal(situation.consequence?.includes("Invalid 'to'"), false)
+})

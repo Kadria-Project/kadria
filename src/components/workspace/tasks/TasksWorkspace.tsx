@@ -78,7 +78,7 @@ function freshnessLabel(generatedAt: string | undefined) {
 
 function proofLabel(confidence: WorkSituation['confidence']) {
   if (confidence === 'high') return 'Confiance élevée'
-  if (confidence === 'medium') return 'À confirmer'
+  if (confidence === 'medium') return 'Confiance à confirmer'
   return 'À vérifier'
 }
 
