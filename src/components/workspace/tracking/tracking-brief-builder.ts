@@ -76,7 +76,8 @@ function rowFor(project: TrackingProjectInput, now: Date): TrackingProjectRow {
         : project.lastFollowUpAt
           ? { label: 'Relance client enregistrée', ageLabel: relativeLabel(project.lastFollowUpAt, now), tone: 'neutral' as const }
           : { label: 'Demande créée', ageLabel: relativeLabel(project.createdAt, now), tone: 'neutral' as const }
-  return { id: project.id, title: title(project), clientLabel: clientLabel(project), stage, stageLabel: stageLabel(project, now), progress: pipeline.findIndex((item) => item.key === stage) + 1, lastActivity, nextStep: nextStepFor(project, now) }
+  const watchReason = slowdown ? slowdown.reason : stage === 'waiting_client' ? 'Devis sans réponse' : stage === 'quote_to_prepare' ? 'Prêt à chiffrer' : stage === 'quote_sent' ? 'Mouvement récent à accompagner' : stage === 'qualification' ? 'Décision attendue' : 'Prochaine étape à confirmer'
+  return { id: project.id, title: title(project), clientLabel: clientLabel(project), stage, stageLabel: stageLabel(project, now), progress: pipeline.findIndex((item) => item.key === stage) + 1, lastActivity, watchReason, nextStep: nextStepFor(project, now) }
 }
 
 function analysesFor(projects: TrackingProjectInput[], slowdowns: TrackingSlowdown[], now: Date): TrackingAnalysis[] {
@@ -111,7 +112,7 @@ export function buildTrackingBrief(projects: TrackingProjectInput[], input: { no
   const movements = visibleProjects.map((project) => movementFor(project, now)).filter((item): item is TrackingMovement => Boolean(item)).sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()).slice(0, 4)
   const activeProjects = visibleProjects.filter((project) => stageFor(project, now) !== 'won')
   const projectsForTable = activeProjects.length ? activeProjects : visibleProjects
-  const rows = projectsForTable.map((project) => rowFor(project, now)).sort((a, b) => b.progress - a.progress || a.title.localeCompare(b.title)).slice(0, 5)
+  const rows = projectsForTable.map((project) => rowFor(project, now)).sort((a, b) => (b.lastActivity.tone === 'attention' ? 1 : 0) - (a.lastActivity.tone === 'attention' ? 1 : 0) || (b.stage === 'waiting_client' ? 1 : 0) - (a.stage === 'waiting_client' ? 1 : 0) || (b.stage === 'quote_to_prepare' ? 1 : 0) - (a.stage === 'quote_to_prepare' ? 1 : 0) || a.title.localeCompare(b.title)).slice(0, 5)
   const progressingCount = visibleProjects.filter((project) => !slowdowns.some((item) => item.projectId === project.id) && stageFor(project, now) !== 'new').length
   const decisionCount = visibleProjects.filter((project) => stageFor(project, now) === 'waiting_client' || project.completenessScore < 60).length
   return { generatedAt: now.toISOString(), dataQuality: { level: input.insufficient ? 'insufficient' : reservations.length ? 'partial' : 'complete', reservations }, opportunities, workspace: { firstName: input.firstName || null, activeCount: visibleProjects.length, progressingCount, slowingCount: slowdowns.length, decisionCount, pipeline: stages, quoteValueInProgress: stages.filter((item) => !['new', 'qualification', 'won'].includes(item.key)).reduce((sum, item) => sum + item.quoteAmount, 0), progressedThroughQuoteCount: stages.filter((item) => ['quote_sent', 'waiting_client', 'won'].includes(item.key)).reduce((sum, item) => sum + item.count, 0), movements, slowdowns, analyses: analysesFor(visibleProjects, slowdowns, now), projects: rows } }

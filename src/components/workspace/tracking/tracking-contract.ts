@@ -37,6 +37,7 @@ export type TrackingProjectRow = {
   stageLabel: string
   progress: number
   lastActivity: { label: string; ageLabel: string; tone: 'neutral' | 'positive' | 'attention' }
+  watchReason: string
   nextStep: { label: string; href: string }
 }
 
