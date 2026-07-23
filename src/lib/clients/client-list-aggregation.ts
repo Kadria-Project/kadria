@@ -9,6 +9,7 @@ const ACCEPTED_QUOTE_STATUSES = new Set(['accepté', 'accepte', 'accepted'])
 const PENDING_QUOTE_STATUSES = new Set(['envoyé', 'envoye', 'sent', 'pending', 'en attente'])
 const STALE_PROJECT_MS = 21 * 24 * 60 * 60 * 1000
 const PENDING_QUOTE_MS = 14 * 24 * 60 * 60 * 1000
+const REACTIVATION_MS = 60 * 24 * 60 * 60 * 1000
 
 const text = (value: unknown) => typeof value === 'string' && value.trim() ? value.trim() : null
 const date = (value: unknown) => {
@@ -40,14 +41,26 @@ function legacyId(key: string) {
   return `legacy:${createHash('sha256').update(key).digest('base64url').slice(0, 24)}`
 }
 
-function interactionLabel(row: Row, source: 'event' | 'activity' | 'project') {
+function interactionLabel(row: Row, source: 'event' | 'activity' | 'project' | 'quote' | 'appointment') {
   const value = normalized(row.event_type || row.action || row.type || row.description)
   if (value.includes('devis') && value.includes('accep')) return 'Devis accepté'
   if (value.includes('devis') && (value.includes('envoy') || value.includes('send'))) return 'Devis envoyé'
+  if (source === 'appointment') return normalized(row.confirmation_status) === 'confirmed' ? 'Rendez-vous confirmé' : 'Rendez-vous créé'
+  if (source === 'quote') return isAcceptedQuote(row) ? 'Devis accepté' : text(row.quote_sent_at) ? 'Devis envoyé' : 'Devis créé'
   if (value.includes('rendez') || value.includes('appointment')) return 'Rendez-vous planifié'
   if (value.includes('message')) return value.includes('artisan') ? 'Réponse artisan' : 'Message client'
   if (value.includes('information') || value.includes('complet')) return 'Informations complétées'
-  return source === 'project' ? (row.updated_at ? 'Projet mis à jour' : 'Projet créé') : source === 'event' ? 'Message client' : 'Projet mis à jour'
+  return source === 'project' ? 'Dossier créé' : source === 'event' ? 'Message client' : 'Interaction enregistrée'
+}
+
+function relationshipFor(input: { source: 'canonical' | 'legacy'; projectCount: number; activeProjectCount: number; wonProjectCount: number; attentionReason: string | null; lastInteractionAt: Date | null; now: Date }): ClientListItem['relation'] {
+  if (input.source === 'legacy') return 'legacy'
+  if (input.attentionReason) return 'watch'
+  if (input.projectCount >= 2 || input.wonProjectCount >= 2) return 'loyal'
+  if (input.activeProjectCount > 0) return 'active'
+  if (input.lastInteractionAt && input.now.getTime() - input.lastInteractionAt.getTime() >= REACTIVATION_MS) return 'reactivate'
+  if (!input.projectCount) return 'new'
+  return 'inactive'
 }
 
 function chooseAttention(input: { source: 'canonical' | 'legacy'; possibleDuplicate: boolean; projects: Row[]; appointments: Row[]; quotes: Row[]; now: Date }) {
@@ -93,10 +106,8 @@ export function aggregateClientList(input: { clients: Row[]; projects: Row[]; qu
     const interactions = [
       ...input.events.filter((event) => projectIds.has(String(event.project_id))).map((event) => ({ value: event, source: 'event' as const, at: date(event.created_at) })),
       ...input.activities.filter((activity) => projectIds.has(String(activity.project_id))).map((activity) => ({ value: activity, source: 'activity' as const, at: date(activity.created_at) })),
-      ...projects.flatMap((project) => [
-        { value: { ...project, updated_at: project.updated_at }, source: 'project' as const, at: date(project.updated_at) },
-        { value: { ...project, created_at: project.created_at }, source: 'project' as const, at: date(project.created_at) },
-      ]),
+      ...quotes.map((quote) => ({ value: quote, source: 'quote' as const, at: date(quote.accepted_at || quote.quote_sent_at || quote.created_at) })),
+      ...projects.map((project) => ({ value: project, source: 'project' as const, at: date(project.created_at) })),
     ].filter((interaction) => interaction.at).sort((left, right) => (right.at?.getTime() || 0) - (left.at?.getTime() || 0))
     const latestProject = [...projects].sort((left, right) => (date(right.updated_at || right.created_at)?.getTime() || 0) - (date(left.updated_at || left.created_at)?.getTime() || 0))[0]
     const email = text(identity.email) || text(identity.client_email)
@@ -108,6 +119,9 @@ export function aggregateClientList(input: { clients: Row[]; projects: Row[]; qu
     const firstName = text(identity.first_name) || text(identity.client_first_name)
     const lastName = text(identity.last_name) || text(identity.client_name)
     const companyName = text(identity.company_name)
+    const activeProjectCount = projects.filter((project) => ACTIVE_PROJECT_STATUSES.has(normalizedStatus(project.status))).length
+    const wonProjectCount = projects.filter((project) => ['gagné', 'gagne', 'won'].includes(normalizedStatus(project.status))).length
+    const lastInteraction = interactions[0] || null
     return {
       id,
       source,
@@ -120,9 +134,11 @@ export function aggregateClientList(input: { clients: Row[]; projects: Row[]; qu
       phone: tel,
       city: text(identity.city),
       status: clientStatus(source, identity, projects, attentionReason),
+      relation: relationshipFor({ source, projectCount: projects.length, activeProjectCount, wonProjectCount, attentionReason, lastInteractionAt: lastInteraction?.at || null, now }),
+      signal: attentionReason,
       projectCount: projects.length,
-      activeProjectCount: projects.filter((project) => ACTIVE_PROJECT_STATUSES.has(normalizedStatus(project.status))).length,
-      wonProjectCount: projects.filter((project) => ['gagné', 'gagne', 'won'].includes(normalizedStatus(project.status))).length,
+      activeProjectCount,
+      wonProjectCount,
       lostProjectCount: projects.filter((project) => ['perdu', 'lost'].includes(normalizedStatus(project.status))).length,
       quoteCount: quotes.length,
       acceptedQuoteCount: quotes.filter(isAcceptedQuote).length,
@@ -131,8 +147,8 @@ export function aggregateClientList(input: { clients: Row[]; projects: Row[]; qu
       acceptedAmount: quotes.filter(isAcceptedQuote).reduce((sum, quote) => sum + quoteAmount(quote), 0),
       latestProject: latestProject ? { id: String(latestProject.id), title: text(latestProject.project_title) || 'Dossier', status: text(latestProject.status) || 'Nouveau', createdAt: text(latestProject.created_at) || '' } : null,
       nextAppointment: nextAppointment ? { id: String(nextAppointment.id), title: text(nextAppointment.title) || 'Rendez-vous', startTime: text(nextAppointment.start_time) || '', confirmationStatus: text(nextAppointment.confirmation_status) || 'pending', assignedUserId: text(nextAppointment.assigned_user_id) } : null,
-      lastInteractionAt: interactions[0]?.at?.toISOString() || null,
-      lastInteractionLabel: interactions[0] ? interactionLabel(interactions[0].value, interactions[0].source) : null,
+      lastInteractionAt: lastInteraction?.at?.toISOString() || null,
+      lastInteractionLabel: lastInteraction ? interactionLabel(lastInteraction.value, lastInteraction.source) : null,
       needsAttention: Boolean(attentionReason),
       attentionReason,
     }

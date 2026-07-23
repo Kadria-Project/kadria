@@ -11,6 +11,8 @@ export type ClientListItem = {
   phone: string | null
   city: string | null
   status: string
+  relation: 'new' | 'active' | 'loyal' | 'watch' | 'reactivate' | 'inactive' | 'legacy'
+  signal: string | null
   projectCount: number
   activeProjectCount: number
   wonProjectCount: number
@@ -34,7 +36,7 @@ export type ClientListResponse = {
   total: number
   page: number
   pageSize: number
-  summary: { totalClients: number; activeClients: number; prospectsToFollowUp: number; recurringClients: number; totalAcceptedValue: number; legacyEntries: number; attentionCount: number }
+  summary: { totalClients: number; activeClients: number; loyalClients: number; watchClients: number; reactivationClients: number; totalAcceptedValue: number; legacyEntries: number; attentionCount: number }
   /**
    * Tenant-scoped CRM action center payload, derived from the full
    * (pre-pagination) client list so it never reflects only the current page.
