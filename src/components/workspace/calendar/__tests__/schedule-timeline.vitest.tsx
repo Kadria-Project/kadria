@@ -17,21 +17,19 @@ function renderTimeline(events: NormalizedCalendarEvent[] = []) {
   return calls
 }
 
-test('renders one accessible appointment action per day even when the day is occupied', () => {
+test('does not render permanent add actions in day headers', () => {
   renderTimeline([appointment('2026-07-21')])
-  expect(screen.getAllByRole('button', { name: /ajouter un rendez-vous le/i })).toHaveLength(7)
-  expect(screen.getByRole('button', { name: /ajouter un rendez-vous le mardi 21 juillet/i })).toBeVisible()
-  expect(screen.queryByRole('button', { name: /ajouter un créneau/i })).toBeNull()
+  expect(screen.queryByRole('button', { name: /ajouter un rendez-vous le/i })).toBeNull()
 })
 
-test('passes the header day and trigger to the canonical create handler', () => {
+test('opens contextual creation from a keyboard-focused free planning area', () => {
   const calls = renderTimeline([appointment('2026-07-21'), appointment('2026-07-22')])
-  const trigger = screen.getByRole('button', { name: /ajouter un rendez-vous le mardi 21 juillet/i })
-  trigger.focus()
-  expect(trigger).toHaveFocus()
-  fireEvent.click(trigger)
+  const planningArea = screen.getByLabelText(/planning du mardi 21 juillet/i)
+  planningArea.focus()
+  expect(planningArea).toHaveFocus()
+  fireEvent.keyDown(planningArea, { key: 'Enter' })
   expect(calls.onCreate).toHaveBeenCalledOnce()
   expect(calls.onCreate.mock.calls[0][0].toDateString()).toBe(new Date('2026-07-21T12:00:00').toDateString())
-  expect(calls.onCreate.mock.calls[0][1]).toBe(trigger)
-  expect(calls.onCreate.mock.calls[0][2].toDateString()).toBe(new Date('2026-07-21T07:00:00').toDateString())
+  expect(calls.onCreate.mock.calls[0][1]).toBeUndefined()
+  expect(calls.onCreate.mock.calls[0][2]).toBeDefined()
 })

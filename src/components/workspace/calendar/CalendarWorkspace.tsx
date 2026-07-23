@@ -12,6 +12,7 @@ import AppointmentCreateModal, { type AppointmentCreateForm, type AppointmentPro
 import AppointmentQualificationModal from './AppointmentQualificationModal';
 import AppointmentConfirmationModal from './AppointmentConfirmationModal';
 import AppointmentDetailsModal from './AppointmentDetailsModal';
+import AppointmentMoveConfirmationModal from './AppointmentMoveConfirmationModal';
 import CalendarBriefing from './CalendarBriefing';
 import AgendaSituationsPanel from './AgendaSituationsPanel';
 import AgendaDayInsights from './AgendaDayInsights';
@@ -21,11 +22,12 @@ import ScheduleTimeline from './ScheduleTimeline';
 import TeamScheduleTimeline from './TeamScheduleTimeline';
 import type { CalendarView, PlanningInsights, TeamPlanningMember, TeamPlanningPermissions } from './calendar-workspace-types';
 import { addDays, eventDate, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
-import { deriveDayReadiness, deriveScheduleSituations, type ScheduleSituation } from '@/src/lib/calendar/schedule-situations';
+import { deriveDayReadiness, deriveNextIntervention, deriveScheduleSituations, type ScheduleSituation } from '@/src/lib/calendar/schedule-situations';
 import { consumeAppointmentQuickCreateRoute, isAppointmentQuickCreate } from './quick-create-command';
 
 type CalendarMode = 'kadria' | 'google';
 type PlanningMode = 'personal' | 'team';
+type PendingMove = { event: NormalizedCalendarEvent; previousStart: Date; previousEnd: Date; nextStart: Date; nextEnd: Date; nextAssignedUserId: string | null; previousAssigneeName: string | null; nextAssigneeName: string | null; conflictTitle: string | null; resized: boolean };
 const MINIMUM_APPOINTMENT_DURATION_MS = 15 * 60_000;
 
 function formatInputDate(date: Date) {
@@ -73,6 +75,7 @@ export default function CalendarWorkspace() {
   const [qualifyingEvent, setQualifyingEvent] = useState<NormalizedCalendarEvent | null>(null);
   const [qualificationSaving, setQualificationSaving] = useState(false);
   const [qualificationError, setQualificationError] = useState<string | null>(null);
+  const [currentTime] = useState(() => Date.now());
   const [workHours, setWorkHours] = useState({ start: null as string | null, end: null as string | null });
   const [savingAppointmentIds, setSavingAppointmentIds] = useState<Set<string>>(() => new Set());
   const [teamMembers, setTeamMembers] = useState<TeamPlanningMember[]>([]);
@@ -85,6 +88,8 @@ export default function CalendarWorkspace() {
   const [collaboratorFilter, setCollaboratorFilter] = useState('all');
   const [filterDraft, setFilterDraft] = useState({ confirmation: 'all', collaborator: 'all' });
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
   const savingAppointmentIdsRef = useRef(savingAppointmentIds);
   const filtersTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -223,6 +228,7 @@ export default function CalendarWorkspace() {
   }), [events]);
   const situations = useMemo(() => deriveScheduleSituations(events, insights), [events, insights]);
   const dayReadiness = useMemo(() => deriveDayReadiness({ loading, error, events, situations, insightsVerified: insights !== null }), [error, events, insights, loading, situations]);
+  const nextAppointment = useMemo(() => deriveNextIntervention(events, new Date(currentTime)), [currentTime, events]);
   const dayMetrics = useMemo(() => {
     const timedEvents = todayEvents.filter((event) => event.start && event.end);
     const travelMinutes = appointments.filter((appointment) => appointment.eventType === 'travel' && appointment.start && appointment.end && isSameDay(new Date(appointment.start), new Date())).reduce((total, appointment) => total + Math.max(0, Math.round((new Date(appointment.end!).getTime() - new Date(appointment.start!).getTime()) / 60_000)), 0);
@@ -478,7 +484,7 @@ export default function CalendarWorkspace() {
       setDeleting(false);
     }
   };
-  const handleMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, forceConflict = false, resizedEnd?: Date, requestId = createAppointmentMutationRequestId()) => {
+  const persistMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, forceConflict = false, resizedEnd?: Date, requestId = createAppointmentMutationRequestId()) => {
     if (!event.rawAppointmentId || !event.start || !event.end || event.status === 'cancelled') return;
     if (savingAppointmentIds.has(event.rawAppointmentId) && !forceConflict) return;
     const previousStart = event.start;
@@ -488,25 +494,24 @@ export default function CalendarWorkspace() {
     const nextEnd = resizedEnd ? resizedEnd.toISOString() : new Date(nextStart.getTime() + duration).toISOString();
     if (new Date(nextEnd).getTime() - nextStart.getTime() < MINIMUM_APPOINTMENT_DURATION_MS) return;
     const nextStartIso = nextStart.toISOString();
-    const localConflict = events.find((candidate) => candidate.rawAppointmentId !== event.rawAppointmentId && candidate.assignedUserId === event.assignedUserId && candidate.status !== 'cancelled' && candidate.start && candidate.end && nextStartIso < candidate.end && nextEnd > candidate.start);
-    if (localConflict && !forceConflict && !window.confirm(`Ce collaborateur possède déjà un rendez-vous sur cette plage horaire${localConflict.title ? ` : ${localConflict.title}` : ''}.\n\nConserver quand même ?`)) return;
     setSavingAppointmentIds((current) => new Set(current).add(event.rawAppointmentId!));
     setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: nextStartIso, end: nextEnd } : item));
     try {
-      const response = await fetch('/api/appointments/' + event.rawAppointmentId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: !resizedEnd, resize: Boolean(resizedEnd), forceConflict: Boolean(localConflict || forceConflict), requestId }) });
+      const response = await fetch('/api/appointments/' + event.rawAppointmentId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: !resizedEnd, resize: Boolean(resizedEnd), forceConflict: Boolean(forceConflict), requestId }) });
       const json = await response.json() as AppointmentMutationResponse & { code?: string; error?: string };
       if (response.status === 409 && json?.code === 'APPOINTMENT_CONFLICT' && !forceConflict) {
         setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd } : item));
-        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, true, resizedEnd, requestId);
+        setMoveError(json.error || 'Un conflit empêche cet enregistrement. Ajustez l’horaire puis réessayez.');
         return;
       }
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');
       setSuccessMessage(appointmentMutationFeedback(json, resizedEnd
         ? `Durée du rendez-vous modifiée jusqu’à ${resizedEnd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`
         : `Rendez-vous déplacé à ${nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`));
+      setPendingMove(null);
     } catch {
       setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd } : item));
-      setError(resizedEnd
+      setMoveError(resizedEnd
         ? 'La durée du rendez-vous n’a pas pu être modifiée. La durée précédente a été restaurée.'
         : 'Le rendez-vous n’a pas pu être déplacé. Son horaire précédent a été restauré.');
     } finally {
@@ -517,11 +522,7 @@ export default function CalendarWorkspace() {
       });
     }
   };
-  const handleResizeEvent = (event: NormalizedCalendarEvent, nextEnd: Date) => {
-    if (!event.start) return;
-    void handleMoveEvent(event, new Date(event.start), false, nextEnd);
-  };
-  const handleTeamMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, nextAssignedUserId: string, forceConflict = false, requestId = createAppointmentMutationRequestId()) => {
+  const persistTeamMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, nextAssignedUserId: string, forceConflict = false, requestId = createAppointmentMutationRequestId()) => {
     if (!event.rawAppointmentId || !event.start || !event.end || event.status === 'cancelled') return;
     if (savingAppointmentIds.has(event.rawAppointmentId) && !forceConflict) return;
     const previousStart = event.start;
@@ -531,8 +532,6 @@ export default function CalendarWorkspace() {
     if (!Number.isFinite(duration) || duration < MINIMUM_APPOINTMENT_DURATION_MS) return;
     const nextStartIso = nextStart.toISOString();
     const nextEnd = new Date(nextStart.getTime() + duration).toISOString();
-    const localConflict = events.find((candidate) => candidate.rawAppointmentId !== event.rawAppointmentId && candidate.assignedUserId === nextAssignedUserId && candidate.status !== 'cancelled' && candidate.start && candidate.end && nextStartIso < candidate.end && nextEnd > candidate.start);
-    if (localConflict && !forceConflict && !window.confirm(`Ce collaborateur possède déjà un rendez-vous sur cette plage horaire${localConflict.title ? ` : ${localConflict.title}` : ''}.\n\nConserver quand même ?`)) return;
     const assigneeName = teamMembers.find((member) => member.userId === nextAssignedUserId)?.name || event.assignedUserName;
     setSavingAppointmentIds((current) => new Set(current).add(event.rawAppointmentId!));
     setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: nextStartIso, end: nextEnd, assignedUserId: nextAssignedUserId, assignedUserName: assigneeName, isUnassigned: false } : item));
@@ -540,20 +539,21 @@ export default function CalendarWorkspace() {
       const response = await fetch('/api/appointments/' + event.rawAppointmentId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: true, forceConflict: Boolean(localConflict || forceConflict), requestId, ...(nextAssignedUserId !== previousAssignedUserId ? { assignedUserId: nextAssignedUserId } : {}) }),
+        body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: true, forceConflict: Boolean(forceConflict), requestId, ...(nextAssignedUserId !== previousAssignedUserId ? { assignedUserId: nextAssignedUserId } : {}) }),
       });
       const json = await response.json() as AppointmentMutationResponse & { code?: string; error?: string };
       if (response.status === 409 && json?.code === 'APPOINTMENT_CONFLICT' && !forceConflict) {
         setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd, assignedUserId: previousAssignedUserId, assignedUserName: event.assignedUserName, isUnassigned: event.isUnassigned } : item));
-        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleTeamMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, nextAssignedUserId, true, requestId);
+        setMoveError(json.error || 'Un conflit empêche cet enregistrement. Ajustez l’horaire puis réessayez.');
         return;
       }
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');
       const time = nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       setSuccessMessage(appointmentMutationFeedback(json, nextAssignedUserId !== previousAssignedUserId ? `Rendez-vous réaffecté à ${assigneeName || 'ce collaborateur'} et déplacé à ${time}.` : `Rendez-vous déplacé à ${time}.`));
+      setPendingMove(null);
     } catch {
       setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd, assignedUserId: previousAssignedUserId, assignedUserName: event.assignedUserName, isUnassigned: event.isUnassigned } : item));
-      setError('Le rendez-vous n’a pas pu être déplacé. Son horaire précédent a été restauré.');
+      setMoveError('Le rendez-vous n’a pas pu être déplacé. Son horaire précédent a été restauré.');
     } finally {
       setSavingAppointmentIds((current) => {
         const next = new Set(current);
@@ -562,6 +562,36 @@ export default function CalendarWorkspace() {
       });
     }
   };
+
+  const requestMoveConfirmation = (event: NormalizedCalendarEvent, nextStart: Date, resizedEnd?: Date) => {
+    if (!event.start || !event.end || !event.rawAppointmentId) return;
+    const previousStart = new Date(event.start);
+    const previousEnd = new Date(event.end);
+    const duration = previousEnd.getTime() - previousStart.getTime();
+    const nextEnd = resizedEnd || new Date(nextStart.getTime() + duration);
+    if (!Number.isFinite(duration) || nextEnd <= nextStart) return;
+    const conflict = events.find((candidate) => candidate.rawAppointmentId !== event.rawAppointmentId && candidate.assignedUserId === event.assignedUserId && candidate.status !== 'cancelled' && candidate.start && candidate.end && nextStart.toISOString() < candidate.end && nextEnd.toISOString() > candidate.start);
+    setMoveError(null);
+    setPendingMove({ event, previousStart, previousEnd, nextStart, nextEnd, nextAssignedUserId: event.assignedUserId, previousAssigneeName: event.assignedUserName, nextAssigneeName: event.assignedUserName, conflictTitle: conflict?.title || null, resized: Boolean(resizedEnd) });
+  };
+  const requestTeamMoveConfirmation = (event: NormalizedCalendarEvent, nextStart: Date, nextAssignedUserId: string) => {
+    if (!event.start || !event.end || !event.rawAppointmentId) return;
+    const previousStart = new Date(event.start);
+    const previousEnd = new Date(event.end);
+    const duration = previousEnd.getTime() - previousStart.getTime();
+    const nextEnd = new Date(nextStart.getTime() + duration);
+    if (!Number.isFinite(duration) || nextEnd <= nextStart) return;
+    const conflict = events.find((candidate) => candidate.rawAppointmentId !== event.rawAppointmentId && candidate.assignedUserId === nextAssignedUserId && candidate.status !== 'cancelled' && candidate.start && candidate.end && nextStart.toISOString() < candidate.end && nextEnd.toISOString() > candidate.start);
+    const nextAssigneeName = teamMembers.find((member) => member.userId === nextAssignedUserId)?.name || null;
+    setMoveError(null);
+    setPendingMove({ event, previousStart, previousEnd, nextStart, nextEnd, nextAssignedUserId, previousAssigneeName: event.assignedUserName, nextAssigneeName, conflictTitle: conflict?.title || null, resized: false });
+  };
+  const handleMoveEvent = (event: NormalizedCalendarEvent, nextStart: Date) => requestMoveConfirmation(event, nextStart);
+  const handleResizeEvent = (event: NormalizedCalendarEvent, nextEnd: Date) => {
+    if (!event.start) return;
+    requestMoveConfirmation(event, new Date(event.start), nextEnd);
+  };
+  const handleTeamMoveEvent = (event: NormalizedCalendarEvent, nextStart: Date, nextAssignedUserId: string) => requestTeamMoveConfirmation(event, nextStart, nextAssignedUserId);
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-4 pb-6">
@@ -577,9 +607,10 @@ export default function CalendarWorkspace() {
         </div>
         {planningMode === 'team' && teamPlanningAvailable ? <TeamScheduleTimeline view={view} selectedDate={selectedDate} events={events.filter((event) => event.source === 'kadria-appointment')} members={teamMembers} selectedMemberIds={selectedTeamMemberIds} onToggleMember={(memberId) => setSelectedTeamMemberIds((current) => current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId])} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onDaySelect={setSelectedDate} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} onMoveEvent={(event, start, assignedUserId) => void handleTeamMoveEvent(event, start, assignedUserId)} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} /> : <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={(day, trigger, suggestedStart) => openCreate(undefined, undefined, day, trigger, suggestedStart)} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />}
         </section>
-        <AgendaDayInsights summary={agendaDaySummary} situation={situations[0] || null} onSituationAction={actOnSituation} />
+        <AgendaDayInsights summary={agendaDaySummary} situation={situations[0] || null} nextAppointment={nextAppointment} onOpenProject={openProject} />
        <AgendaFiltersPopover open={filtersOpen} triggerRef={filtersTriggerRef} confirmation={filterDraft.confirmation} collaborator={filterDraft.collaborator} members={teamMembers} onConfirmationChange={(confirmation) => setFilterDraft((current) => ({ ...current, confirmation }))} onCollaboratorChange={(collaborator) => setFilterDraft((current) => ({ ...current, collaborator }))} onApply={applyFilters} onReset={resetFilters} onClose={() => setFiltersOpen(false)} />
-      {loading && <p className="text-sm text-slate-500">Chargement du planning...</p>}
+       {pendingMove ? <AppointmentMoveConfirmationModal event={pendingMove.event} previousStart={pendingMove.previousStart} previousEnd={pendingMove.previousEnd} nextStart={pendingMove.nextStart} nextEnd={pendingMove.nextEnd} previousAssigneeName={pendingMove.previousAssigneeName} nextAssigneeName={pendingMove.nextAssigneeName} conflictTitle={pendingMove.conflictTitle} saving={savingAppointmentIds.has(pendingMove.event.rawAppointmentId || '')} error={moveError} onCancel={() => { if (!savingAppointmentIds.has(pendingMove.event.rawAppointmentId || '')) { setPendingMove(null); setMoveError(null); } }} onConfirm={(start, end) => { if (pendingMove.nextAssignedUserId && pendingMove.nextAssignedUserId !== pendingMove.event.assignedUserId) { void persistTeamMoveEvent(pendingMove.event, start, pendingMove.nextAssignedUserId); return; } void persistMoveEvent(pendingMove.event, start, false, end); }} /> : null}
+       {loading && <p className="text-sm text-slate-500">Chargement du planning...</p>}
       {selectedEvent?.rawAppointmentId ? <AppointmentDetailsModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onPrepare={() => { setSelectedEvent(null); setConfirmationError(null); setConfirmingEvent(selectedEvent); }} onManual={() => { setSelectedEvent(null); setConfirmationError(null); setConfirmingEvent(selectedEvent); }} onReplan={() => { const event = selectedEvent; setSelectedEvent(null); openEvent(event, true); }} onEdit={() => { const event = selectedEvent; setSelectedEvent(null); openEvent(event, true); }} onOpenProject={() => openProject(selectedEvent)} /> : selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4" onClick={() => setSelectedEvent(null)}>
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
