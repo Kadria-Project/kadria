@@ -14,13 +14,14 @@ import AppointmentConfirmationModal from './AppointmentConfirmationModal';
 import AppointmentDetailsModal from './AppointmentDetailsModal';
 import CalendarBriefing from './CalendarBriefing';
 import AgendaSituationsPanel from './AgendaSituationsPanel';
-import NextAppointmentPanel from './NextAppointmentPanel';
-import ScheduleTravelPanel from './ScheduleTravelPanel';
+import AgendaDayInsights from './AgendaDayInsights';
+import AgendaFiltersPopover from './AgendaFiltersPopover';
+import { deriveAgendaDaySummary } from './agenda-day-summary';
 import ScheduleTimeline from './ScheduleTimeline';
 import TeamScheduleTimeline from './TeamScheduleTimeline';
 import type { CalendarView, PlanningInsights, TeamPlanningMember, TeamPlanningPermissions } from './calendar-workspace-types';
 import { addDays, eventDate, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
-import { deriveDayReadiness, deriveNextIntervention, deriveScheduleSituations, type ScheduleSituation } from '@/src/lib/calendar/schedule-situations';
+import { deriveDayReadiness, deriveScheduleSituations, type ScheduleSituation } from '@/src/lib/calendar/schedule-situations';
 import { consumeAppointmentQuickCreateRoute, isAppointmentQuickCreate } from './quick-create-command';
 
 type CalendarMode = 'kadria' | 'google';
@@ -80,33 +81,16 @@ export default function CalendarWorkspace() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<AppointmentProjectOption | null>(null);
   const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', clientName: '', clientEmail: '', clientPhone: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
-  const [currentTime] = useState(() => Date.now());
   const [confirmationFilter, setConfirmationFilter] = useState('all');
   const [collaboratorFilter, setCollaboratorFilter] = useState('all');
   const [filterDraft, setFilterDraft] = useState({ confirmation: 'all', collaborator: 'all' });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const savingAppointmentIdsRef = useRef(savingAppointmentIds);
-  const filtersRef = useRef<HTMLDivElement>(null);
+  const filtersTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     savingAppointmentIdsRef.current = savingAppointmentIds;
   }, [savingAppointmentIds]);
-
-  useEffect(() => {
-    if (!filtersOpen) return;
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) setFiltersOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setFiltersOpen(false);
-    };
-    document.addEventListener('mousedown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('mousedown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [filtersOpen]);
 
   const fetchAppointments = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
     if (background && savingAppointmentIdsRef.current.size > 0) return;
@@ -239,7 +223,6 @@ export default function CalendarWorkspace() {
   }), [events]);
   const situations = useMemo(() => deriveScheduleSituations(events, insights), [events, insights]);
   const dayReadiness = useMemo(() => deriveDayReadiness({ loading, error, events, situations, insightsVerified: insights !== null }), [error, events, insights, loading, situations]);
-  const nextAppointment = useMemo(() => deriveNextIntervention(events, new Date(currentTime)), [currentTime, events]);
   const dayMetrics = useMemo(() => {
     const timedEvents = todayEvents.filter((event) => event.start && event.end);
     const travelMinutes = appointments.filter((appointment) => appointment.eventType === 'travel' && appointment.start && appointment.end && isSameDay(new Date(appointment.start), new Date())).reduce((total, appointment) => total + Math.max(0, Math.round((new Date(appointment.end!).getTime() - new Date(appointment.start!).getTime()) / 60_000)), 0);
@@ -253,6 +236,8 @@ export default function CalendarWorkspace() {
       estimatedEnd: latestEnd ? latestEnd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null,
     };
   }, [appointments, todayEvents]);
+  const eventTypesByAppointmentId = useMemo(() => Object.fromEntries(appointments.map((appointment) => [appointment.id, appointment.eventType])), [appointments]);
+  const agendaDaySummary = useMemo(() => deriveAgendaDaySummary({ events, selectedDate, eventTypesByAppointmentId, workStartTime: workHours.start, workEndTime: workHours.end }), [eventTypesByAppointmentId, events, selectedDate, workHours.end, workHours.start]);
   const endIsValid = Boolean(form.start && form.end && new Date(form.end).getTime() > new Date(form.start).getTime());
   const teamPlanningAvailable = mode === 'kadria' && Boolean(teamPermissions?.canManageTeamPlanning) && teamMembers.length > 1;
 
@@ -585,19 +570,15 @@ export default function CalendarWorkspace() {
       {error && <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}
        <section id="workspace-section-calendar" className="min-h-[70vh]">
-       <div ref={filtersRef} className="relative z-20 mb-3 flex flex-wrap items-center gap-2">
-         <button type="button" onClick={openFilters} aria-label="Ouvrir les filtres Agenda" aria-expanded={filtersOpen} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2"><SlidersHorizontal className="size-4 text-slate-600" />Filtres{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}</button>
+       <div className="mb-3 flex flex-wrap items-center gap-2">
+         <button ref={filtersTriggerRef} type="button" onClick={openFilters} aria-label="Ouvrir les filtres Agenda" aria-haspopup="dialog" aria-expanded={filtersOpen} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2"><SlidersHorizontal className="size-4 text-slate-600" />Filtres{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}</button>
          {activeFilterCount > 0 && <button type="button" onClick={resetFilters} className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">Réinitialiser</button>}
           {teamPlanningAvailable ? <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1"><button type="button" onClick={() => setPlanningMode('personal')} className={['rounded-lg px-3 py-2 text-xs font-semibold transition-colors', planningMode === 'personal' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'].join(' ')}>Mon planning</button><button type="button" onClick={() => setPlanningMode('team')} className={['rounded-lg px-3 py-2 text-xs font-semibold transition-colors', planningMode === 'team' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'].join(' ')}>Planning d’équipe</button></div> : null}
-          {filtersOpen && <div role="dialog" aria-label="Filtres Agenda" className="absolute left-0 top-[calc(100%+8px)] z-50 w-[min(340px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,0.18)]"><p className="text-sm font-bold text-slate-950">Filtres</p><label className="mt-4 block text-xs font-semibold text-slate-700">Statut<select value={filterDraft.confirmation} onChange={(event) => setFilterDraft((current) => ({ ...current, confirmation: event.target.value }))} className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"><option value="all">Tous les statuts</option><option value="pending">À confirmer</option><option value="confirmed">Confirmé</option><option value="change_requested">Changement demandé</option><option value="cancelled">Annulé / refusé</option></select></label><label className="mt-4 block text-xs font-semibold text-slate-700">Collaborateur<select value={filterDraft.collaborator} onChange={(event) => setFilterDraft((current) => ({ ...current, collaborator: event.target.value }))} className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"><option value="all">Tous les collaborateurs</option><option value="me">Moi</option><option value="unassigned">Non affectés</option>{teamMembers.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}</select></label><div className="mt-5 flex items-center justify-between gap-3"><button type="button" onClick={resetFilters} className="text-sm font-semibold text-slate-600 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">Réinitialiser</button><button type="button" onClick={applyFilters} className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950 transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">Appliquer</button></div></div>}
-       </div>
+        </div>
         {planningMode === 'team' && teamPlanningAvailable ? <TeamScheduleTimeline view={view} selectedDate={selectedDate} events={events.filter((event) => event.source === 'kadria-appointment')} members={teamMembers} selectedMemberIds={selectedTeamMemberIds} onToggleMember={(memberId) => setSelectedTeamMemberIds((current) => current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId])} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onDaySelect={setSelectedDate} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} onMoveEvent={(event, start, assignedUserId) => void handleTeamMoveEvent(event, start, assignedUserId)} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} /> : <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={(day, trigger, suggestedStart) => openCreate(undefined, undefined, day, trigger, suggestedStart)} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />}
         </section>
-       <section aria-label="Informations de la journée" className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-         <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} />
-         <ScheduleTravelPanel events={todayEvents} />
-         {insights ? <article className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Analyse de la journée</p><dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-slate-500">Conflits</dt><dd className="mt-1 font-semibold text-slate-950">{insights.summary.conflicts}</dd></div><div><dt className="text-xs text-slate-500">À affecter</dt><dd className="mt-1 font-semibold text-slate-950">{insights.summary.unassigned}</dd></div><div><dt className="text-xs text-slate-500">Aujourd’hui</dt><dd className="mt-1 font-semibold text-slate-950">{insights.summary.today}</dd></div><div><dt className="text-xs text-slate-500">Demain</dt><dd className="mt-1 font-semibold text-slate-950">{insights.summary.tomorrow}</dd></div></dl></article> : null}
-       </section>
+        <AgendaDayInsights summary={agendaDaySummary} situation={situations[0] || null} onSituationAction={actOnSituation} />
+       <AgendaFiltersPopover open={filtersOpen} triggerRef={filtersTriggerRef} confirmation={filterDraft.confirmation} collaborator={filterDraft.collaborator} members={teamMembers} onConfirmationChange={(confirmation) => setFilterDraft((current) => ({ ...current, confirmation }))} onCollaboratorChange={(collaborator) => setFilterDraft((current) => ({ ...current, collaborator }))} onApply={applyFilters} onReset={resetFilters} onClose={() => setFiltersOpen(false)} />
       {loading && <p className="text-sm text-slate-500">Chargement du planning...</p>}
       {selectedEvent?.rawAppointmentId ? <AppointmentDetailsModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onPrepare={() => { setSelectedEvent(null); setConfirmationError(null); setConfirmingEvent(selectedEvent); }} onManual={() => { setSelectedEvent(null); setConfirmationError(null); setConfirmingEvent(selectedEvent); }} onReplan={() => { const event = selectedEvent; setSelectedEvent(null); openEvent(event, true); }} onEdit={() => { const event = selectedEvent; setSelectedEvent(null); openEvent(event, true); }} onOpenProject={() => openProject(selectedEvent)} /> : selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4" onClick={() => setSelectedEvent(null)}>
