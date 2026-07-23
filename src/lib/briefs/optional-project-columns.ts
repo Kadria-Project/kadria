@@ -1,6 +1,6 @@
 import { availableProjectColumns } from './brief-error'
 
-type ProjectQueryResult = { data: unknown; error: unknown }
+type ProjectQueryResult = { data: unknown; error: unknown; count?: number | null }
 
 function missingOptionalColumn(error: unknown, optionalColumns: readonly string[]) {
   if (!error || typeof error !== 'object') return null
