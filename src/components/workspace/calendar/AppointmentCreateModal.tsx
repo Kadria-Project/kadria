@@ -9,6 +9,15 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 export type AppointmentProjectOption = { id: string; clientName: string; clientFirstName: string; clientEmail?: string | null; clientPhone?: string | null; projectTitle: string; projectType: string; status: string; city: string; siteAddress: string };
 export type AppointmentCreateForm = { title: string; start: string; end: string; location: string; description: string; clientName: string; clientEmail: string; clientPhone: string; projectId: string | null; assignedUserId: string; eventType: EventType };
 
+export function projectContactFields(project: AppointmentProjectOption) {
+  return {
+    location: [project.siteAddress, project.city].filter(Boolean).join(', '),
+    clientName: [project.clientFirstName, project.clientName].filter(Boolean).join(' '),
+    clientEmail: project.clientEmail || '',
+    clientPhone: project.clientPhone || '',
+  };
+}
+
 type Props = {
   form: AppointmentCreateForm;
   selectedProject: AppointmentProjectOption | null;

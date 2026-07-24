@@ -114,9 +114,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
     }
     if (!existing || existing.tenant_id !== tenantContext.tenantId) {
-      return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
+      return NextResponse.json({ success: false, code: 'APPOINTMENT_NOT_FOUND', error: 'Rendez-vous introuvable' }, { status: 404 })
     }
-    if (existing.project_id && !matchesWorkspaceProject(existing.project_id, typeof body.projectId === 'string' ? body.projectId : null)) return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     if (!canEditAppointment(tenantContext, existing.assigned_user_id ? String(existing.assigned_user_id) : null)) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
@@ -151,7 +150,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       })
       : null
     if (nextProjectId && !project) {
-      return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
+      return NextResponse.json({ success: false, code: 'PROJECT_NOT_FOUND', error: 'Projet introuvable' }, { status: 404 })
     }
     const nextClientEmail = body.client_email === undefined ? (existing.client_email ? String(existing.client_email) : null) : normalizeEmail(body.client_email)
     if (nextClientEmail === undefined) return NextResponse.json({ success: false, error: 'Adresse e-mail invalide' }, { status: 400 })

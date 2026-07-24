@@ -8,7 +8,7 @@ import { isEventType } from '@/src/lib/calendar/event-types';
 import type { AppointmentQualificationOutcome, AppointmentQualificationStatus } from '@/src/lib/appointment-qualification';
 import type { AppointmentConfirmationSource, AppointmentConfirmationStatus } from '@/src/lib/appointment-confirmation';
 import { createAppointmentMutationRequestId, type AppointmentMutationResponse } from '@/src/lib/appointments/mutation-contract';
-import AppointmentCreateModal, { type AppointmentCreateForm, type AppointmentProjectOption } from './AppointmentCreateModal';
+import AppointmentCreateModal, { projectContactFields, type AppointmentCreateForm, type AppointmentProjectOption } from './AppointmentCreateModal';
 import AppointmentQualificationModal from './AppointmentQualificationModal';
 import AppointmentConfirmationModal from './AppointmentConfirmationModal';
 import AppointmentBriefDrawer from './AppointmentBriefDrawer';
@@ -85,6 +85,7 @@ export default function CalendarWorkspace() {
   const [teamPermissions, setTeamPermissions] = useState<TeamPlanningPermissions | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<AppointmentProjectOption | null>(null);
+  const [pendingContactProject, setPendingContactProject] = useState<AppointmentProjectOption | null>(null);
   const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', clientName: '', clientEmail: '', clientPhone: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
   const [confirmationFilter, setConfirmationFilter] = useState('all');
   const [collaboratorFilter, setCollaboratorFilter] = useState('all');
@@ -93,6 +94,7 @@ export default function CalendarWorkspace() {
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   const savingAppointmentIdsRef = useRef(savingAppointmentIds);
+  const contactFieldsTouchedRef = useRef(false);
   const filtersTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -272,6 +274,8 @@ export default function CalendarWorkspace() {
     createTriggerRef.current = trigger || null;
     setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: project ? [project.siteAddress, project.city].filter(Boolean).join(', ') : '', description: '', clientName: project ? [project.clientFirstName, project.clientName].filter(Boolean).join(' ') : '', clientEmail: project?.clientEmail || '', clientPhone: project?.clientPhone || '', projectId: project?.id || null, assignedUserId: assignedUserId || currentUserId || '', eventType: 'appointment' });
     setSelectedProject(project || null);
+    setPendingContactProject(null);
+    contactFieldsTouchedRef.current = false;
     setCreateError(null);
     setSuccessMessage(null);
     setCreateOpen(true);
@@ -320,6 +324,8 @@ export default function CalendarWorkspace() {
       city: appointment.city || '',
       siteAddress: appointment.address || '',
     } : null);
+    setPendingContactProject(null);
+    contactFieldsTouchedRef.current = false;
     setCreateError(null);
     setEditingAppointmentId(appointment.id);
   };
@@ -381,20 +387,30 @@ export default function CalendarWorkspace() {
     } finally { setConfirmationSaving(false); }
   };
   const updateFormField = (field: Exclude<keyof AppointmentCreateForm, 'projectId'>, value: string) => {
+    if (field === 'clientName' || field === 'clientEmail' || field === 'clientPhone' || field === 'location') contactFieldsTouchedRef.current = true;
     setCreateError(null);
     setForm((current) => ({ ...current, [field]: value }));
   };
-  const updateProject = (project: AppointmentProjectOption | null) => {
+  const applyProjectChange = (project: AppointmentProjectOption | null, replaceContactFields: boolean) => {
     setSelectedProject(project);
-    setCreateError(null);
     setForm((current) => ({
       ...current,
       projectId: project?.id || null,
-      location: current.location || (project ? [project.siteAddress, project.city].filter(Boolean).join(', ') : ''),
-      clientName: current.clientName || (project ? [project.clientFirstName, project.clientName].filter(Boolean).join(' ') : ''),
-      clientEmail: current.clientEmail || project?.clientEmail || '',
-      clientPhone: current.clientPhone || project?.clientPhone || '',
+      ...(project && replaceContactFields ? projectContactFields(project) : {}),
     }));
+    if (replaceContactFields) contactFieldsTouchedRef.current = false;
+  };
+  const updateProject = (project: AppointmentProjectOption | null) => {
+    setCreateError(null);
+    if (!project) {
+      applyProjectChange(null, false);
+      return;
+    }
+    if (contactFieldsTouchedRef.current && project.id !== selectedProject?.id) {
+      setPendingContactProject(project);
+      return;
+    }
+    applyProjectChange(project, true);
   };
   const handleCreate = async () => {
     if (creating || createSubmissionRef.current) return;
@@ -612,7 +628,8 @@ export default function CalendarWorkspace() {
         </div>
       )}
       {(createOpen || quickCreateRequested) && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} error={createError} endIsValid={endIsValid} initialProjectId={quickCreateRequested ? searchParams.get('projectId') : null} onClose={closeCreate} onSubmit={() => void handleCreate()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
-      {editingAppointmentId && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} deleting={deleting} error={createError} endIsValid={endIsValid} mode="edit" onClose={() => !creating && !deleting && setEditingAppointmentId(null)} onSubmit={() => void handleUpdate()} onDelete={() => void handleDelete()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
+      {editingAppointmentId && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} deleting={deleting} error={createError} endIsValid={endIsValid} mode="edit" onClose={() => { if (!creating && !deleting) { setEditingAppointmentId(null); setPendingContactProject(null); contactFieldsTouchedRef.current = false; } }} onSubmit={() => void handleUpdate()} onDelete={() => void handleDelete()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
+      {pendingContactProject && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4" role="presentation"><div role="dialog" aria-modal="true" aria-labelledby="project-contact-replacement-title" className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"><h2 id="project-contact-replacement-title" className="text-base font-bold text-slate-950">Remplacer les coordonnées ?</h2><p className="mt-2 text-sm leading-6 text-slate-600">Le projet sélectionné propose de nouvelles coordonnées. Voulez-vous remplacer vos modifications actuelles ?</p><div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => { applyProjectChange(pendingContactProject, false); setPendingContactProject(null); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Conserver mes modifications</button><button type="button" onClick={() => { applyProjectChange(pendingContactProject, true); setPendingContactProject(null); }} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Remplacer</button></div></div></div>}
       {qualifyingEvent && <AppointmentQualificationModal event={qualifyingEvent} saving={qualificationSaving} error={qualificationError} onClose={() => !qualificationSaving && setQualifyingEvent(null)} onSave={(input) => void handleQualification(input)} />}
       {confirmingEvent && <AppointmentConfirmationModal event={confirmingEvent} saving={confirmationSaving} error={confirmationError} onClose={() => !confirmationSaving && setConfirmingEvent(null)} onSave={(input) => void handleConfirmation(input)} onSend={(input) => void handleConfirmationSend(input)} />}
     </div>

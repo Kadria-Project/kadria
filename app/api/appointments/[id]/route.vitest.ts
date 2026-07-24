@@ -25,11 +25,13 @@ test('workspace PATCH accepts the canonical appointment edit payload and rejects
   expect(() => validateWorkspaceAppointmentPatch({ title: 'Sans projet', unknown_field: true })).toThrow('Ce champ ne peut pas être modifié')
 })
 
-test('appointment route scopes reads and mutations to project and tenant and returns only a DTO', async () => {
+test('appointment route scopes reads to the requested project but allows a valid project reassignment', async () => {
   const source = await readFile(join(resolve(process.cwd()), 'app/api/appointments/[id]/route.ts'), 'utf8')
   expect(source).toContain("request.nextUrl.searchParams.get('projectId')")
   expect(source).toContain('matchesWorkspaceProject(data.project_id, projectId)')
-  expect(source).toContain('matchesWorkspaceProject(existing.project_id')
+  expect(source).not.toContain('if (existing.project_id && !matchesWorkspaceProject')
+  expect(source).toContain("code: 'APPOINTMENT_NOT_FOUND'")
+  expect(source).toContain("code: 'PROJECT_NOT_FOUND'")
   expect(source).toContain("select('id, tenant_id, project_id, assigned_user_id, title, start_time, end_time, status, location, description, client_name, client_phone, client_email')")
   expect(source).not.toContain("select('*')")
   expect(source).toContain("appointment: { id: String(data.id), title: String(data.title || '')")
