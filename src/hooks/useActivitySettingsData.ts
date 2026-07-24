@@ -8,23 +8,123 @@ export type BusinessProfile = { primaryTrade: string; coveredTrades: string[]; s
 export type CatalogItem = { id: string; name: string; category: string | null; price_ht: number | null; unit: string | null; estimated_duration_minutes: number | null; vat_rate: number | null; is_active: boolean }
 export type ServiceProfile = { id: string; name: string; category: string | null; description: string | null; is_active: boolean; qualification_questions: string[]; qualification_fields: Array<{ id: string; label: string; required: boolean; order: number }>; required_information: string[]; required_photos: boolean; travel_required: boolean; appointment_recommended: boolean; emergency_supported: boolean }
 export type TravelSettings = { vehicleType: string; consumptionPer100Km: string; electricityPricePerKwh: string; minimumTravelFee: string; freeTravelRadiusKm: string }
+export type ActivityLoadDomain = 'catalog' | 'qualification' | 'travel' | 'permissions'
+export type ActivityLoadState = 'loading' | 'ready' | 'error'
+type ApiPayload = { success?: boolean; profile?: Record<string, unknown> | UserVehicleProfile | null; items?: CatalogItem[]; profiles?: ServiceProfile[]; config?: { travelConfig?: Record<string, unknown> }; membership?: { role?: string } }
+
 const emptyProfile: BusinessProfile = { primaryTrade: '', coveredTrades: [], specialties: [], excludedServices: [], baseCity: '', interventionRadiusKm: '', travelFeeHt: '', travelFeePerKm: '' }
 const emptyTravel: TravelSettings = { vehicleType: '', consumptionPer100Km: '', electricityPricePerKwh: '', minimumTravelFee: '', freeTravelRadiusKm: '' }
+const initialLoadStates: Record<ActivityLoadDomain, ActivityLoadState> = { catalog: 'loading', qualification: 'loading', travel: 'loading', permissions: 'loading' }
 const asText = (value: unknown) => typeof value === 'number' ? String(value) : typeof value === 'string' ? value : ''
 const strings = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 const numberOrNull = (value: string) => value.trim() === '' ? null : Number.isFinite(Number(value.replace(',', '.'))) ? Number(value.replace(',', '.')) : null
+const readJson = async (response: Promise<Response>) => (await response).json().catch(() => null) as Promise<ApiPayload | null>
 
 /** Modern activity sources are primary; travelConfig is an isolated legacy adapter. */
 export function useActivitySettingsData() {
-  const [role, setRole] = useState<TenantRole | null>(null); const [profile, setProfile] = useState<BusinessProfile>(emptyProfile); const [catalog, setCatalog] = useState<CatalogItem[]>([]); const [serviceProfiles, setServiceProfiles] = useState<ServiceProfile[]>([]); const [vehicle, setVehicle] = useState<UserVehicleProfile | null>(null); const [travel, setTravel] = useState<TravelSettings>(emptyTravel); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [status, setStatus] = useState<Record<string, 'idle' | 'saving' | 'saved' | 'error'>>({}); const [messages, setMessages] = useState<Record<string, string>>({})
-  const result = (domain: string, state: 'idle' | 'saving' | 'saved' | 'error', message = '') => { setStatus(current => ({ ...current, [domain]: state })); setMessages(current => ({ ...current, [domain]: message })); if (state === 'saved') window.setTimeout(() => setStatus(current => ({ ...current, [domain]: 'idle' })), 2500) }
+  const [role, setRole] = useState<TenantRole | null>(null)
+  const [profile, setProfile] = useState<BusinessProfile>(emptyProfile)
+  const [catalog, setCatalog] = useState<CatalogItem[]>([])
+  const [serviceProfiles, setServiceProfiles] = useState<ServiceProfile[]>([])
+  const [vehicle, setVehicle] = useState<UserVehicleProfile | null>(null)
+  const [travel, setTravel] = useState<TravelSettings>(emptyTravel)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [loadStates, setLoadStates] = useState<Record<ActivityLoadDomain, ActivityLoadState>>(initialLoadStates)
+  const [loadErrors, setLoadErrors] = useState<Partial<Record<ActivityLoadDomain, string>>>({})
+  const [status, setStatus] = useState<Record<string, 'idle' | 'saving' | 'saved' | 'error'>>({})
+  const [messages, setMessages] = useState<Record<string, string>>({})
+
+  const result = (domain: string, state: 'idle' | 'saving' | 'saved' | 'error', message = '') => {
+    setStatus(current => ({ ...current, [domain]: state }))
+    setMessages(current => ({ ...current, [domain]: message }))
+    if (state === 'saved') window.setTimeout(() => setStatus(current => ({ ...current, [domain]: 'idle' })), 2500)
+  }
   const normalize = (row: Record<string, unknown> | null): BusinessProfile => row ? { primaryTrade: asText(row.primary_trade), coveredTrades: strings(row.covered_trades), specialties: strings(row.specialties), excludedServices: strings(row.excluded_services), baseCity: asText(row.base_city), interventionRadiusKm: asText(row.intervention_radius_km), travelFeeHt: asText(row.travel_fee_ht), travelFeePerKm: asText(row.travel_fee_per_km) } : emptyProfile
-  const reload = useCallback(async () => { setLoading(true); setError(null); try { const responses = await Promise.all([fetch('/api/artisan/business-profile'), fetch('/api/artisan/service-catalog'), fetch('/api/artisan/service-profiles'), fetch('/api/profile/vehicle'), fetch('/api/artisan/config'), fetch('/api/team')]); const [profileData, catalogData, serviceData, vehicleData, configData, teamData] = await Promise.all(responses.map(response => response.json().catch(() => null))); if (!profileData?.success || !catalogData?.success || !serviceData?.success) throw new Error('Kadria n’a pas pu charger les réglages d’activité.'); setProfile(normalize(profileData.profile)); setCatalog(catalogData.items || []); setServiceProfiles(serviceData.profiles || []); setVehicle(vehicleData?.success ? vehicleData.profile || null : null); const legacy = configData?.success ? configData.config?.travelConfig || {} : {}; setTravel({ vehicleType: asText(legacy.vehicleType), consumptionPer100Km: asText(legacy.consumptionPer100Km), electricityPricePerKwh: asText(legacy.electricityPricePerKwh), minimumTravelFee: asText(legacy.minimumTravelFee), freeTravelRadiusKm: asText(legacy.freeTravelRadiusKm) }); if (teamData?.membership?.role) setRole(teamData.membership.role as TenantRole) } catch (cause) { setError(cause instanceof Error ? cause.message : 'Erreur de chargement.') } finally { setLoading(false) } }, [])
-  useEffect(() => { const timer = window.setTimeout(() => { void reload() }, 0); return () => window.clearTimeout(timer) }, [reload])
+  const setDomainState = (domain: ActivityLoadDomain, state: ActivityLoadState, message?: string) => {
+    setLoadStates(current => ({ ...current, [domain]: state }))
+    setLoadErrors(current => ({ ...current, [domain]: message }))
+  }
+
+  const reload = useCallback(() => {
+    setLoading(true)
+    setError(null)
+    setLoadStates(initialLoadStates)
+    setLoadErrors({})
+
+    // Start every independent read immediately. Only the business profile gates
+    // the first render: the remaining panels stream in as their data arrives.
+    const profileRequest = readJson(fetch('/api/artisan/business-profile'))
+    const catalogRequest = readJson(fetch('/api/artisan/service-catalog'))
+    const serviceProfilesRequest = readJson(fetch('/api/artisan/service-profiles'))
+    const vehicleRequest = readJson(fetch('/api/profile/vehicle'))
+    const configRequest = readJson(fetch('/api/artisan/config'))
+    const teamRequest = readJson(fetch('/api/team'))
+
+    void (async () => {
+      try {
+        const data = await profileRequest
+        if (!data?.success) throw new Error('Kadria n’a pas pu charger les réglages d’activité.')
+        setProfile(normalize(data.profile as Record<string, unknown> | null))
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Erreur de chargement.')
+      } finally {
+        setLoading(false)
+      }
+    })()
+
+    void (async () => {
+      try {
+        const data = await catalogRequest
+        if (!data?.success) throw new Error('Le catalogue de prestations est indisponible.')
+        setCatalog(data.items || [])
+        setDomainState('catalog', 'ready')
+      } catch (cause) {
+        setDomainState('catalog', 'error', cause instanceof Error ? cause.message : 'Le catalogue de prestations est indisponible.')
+      }
+    })()
+
+    void (async () => {
+      try {
+        const data = await serviceProfilesRequest
+        if (!data?.success) throw new Error('Les profils de qualification sont indisponibles.')
+        setServiceProfiles(data.profiles || [])
+        setDomainState('qualification', 'ready')
+      } catch (cause) {
+        setDomainState('qualification', 'error', cause instanceof Error ? cause.message : 'Les profils de qualification sont indisponibles.')
+      }
+    })()
+
+    void (async () => {
+      try {
+        const [vehicleData, configData] = await Promise.all([vehicleRequest, configRequest])
+        if (vehicleData?.success) setVehicle((vehicleData.profile as UserVehicleProfile | null) || null)
+        const legacy = configData?.success ? configData.config?.travelConfig || {} : {}
+        setTravel({ vehicleType: asText(legacy.vehicleType), consumptionPer100Km: asText(legacy.consumptionPer100Km), electricityPricePerKwh: asText(legacy.electricityPricePerKwh), minimumTravelFee: asText(legacy.minimumTravelFee), freeTravelRadiusKm: asText(legacy.freeTravelRadiusKm) })
+        if (!configData?.success) throw new Error('Les réglages de déplacement sont indisponibles.')
+        setDomainState('travel', 'ready')
+      } catch (cause) {
+        setDomainState('travel', 'error', cause instanceof Error ? cause.message : 'Les réglages de déplacement sont indisponibles.')
+      }
+    })()
+
+    void (async () => {
+      try {
+        const data = await teamRequest
+        if (data?.membership?.role) setRole(data.membership.role as TenantRole)
+        if (!data?.success) throw new Error('Les permissions sont indisponibles.')
+        setDomainState('permissions', 'ready')
+      } catch (cause) {
+        setDomainState('permissions', 'error', cause instanceof Error ? cause.message : 'Les permissions sont indisponibles.')
+      }
+    })()
+  }, [])
+
+  useEffect(() => { const timer = window.setTimeout(reload, 0); return () => window.clearTimeout(timer) }, [reload])
   const saveProfile = async (domain: string, patch: Partial<BusinessProfile>) => { result(domain, 'saving'); try { const body: Record<string, unknown> = {}; if ('primaryTrade' in patch) body.primaryTrade = patch.primaryTrade; if ('coveredTrades' in patch) body.coveredTrades = patch.coveredTrades; if ('specialties' in patch) body.specialties = patch.specialties; if ('excludedServices' in patch) body.excludedServices = patch.excludedServices; if ('baseCity' in patch) body.baseCity = patch.baseCity; if ('interventionRadiusKm' in patch) body.interventionRadiusKm = numberOrNull(patch.interventionRadiusKm || ''); if ('travelFeeHt' in patch) body.travelFeeHt = numberOrNull(patch.travelFeeHt || ''); if ('travelFeePerKm' in patch) body.travelFeePerKm = numberOrNull(patch.travelFeePerKm || ''); const response = await fetch('/api/artisan/business-profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await response.json(); if (!data?.success) throw new Error(data?.error || 'Enregistrement impossible.'); setProfile(normalize(data.profile)); result(domain, 'saved', 'Enregistré') } catch (cause) { result(domain, 'error', cause instanceof Error ? cause.message : 'Enregistrement impossible.') } }
   const saveTravelDomain = async (zone: Pick<BusinessProfile, 'baseCity' | 'interventionRadiusKm' | 'travelFeeHt' | 'travelFeePerKm'>, nextTravel: TravelSettings, nextVehicle: UserVehicleProfile | null) => { result('travel', 'saving'); try { const profileResponse = await fetch('/api/artisan/business-profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ baseCity: zone.baseCity, interventionRadiusKm: numberOrNull(zone.interventionRadiusKm), travelFeeHt: numberOrNull(zone.travelFeeHt), travelFeePerKm: numberOrNull(zone.travelFeePerKm) }) }); const profileData = await profileResponse.json(); if (!profileData?.success) throw new Error(profileData?.error || 'Le point de départ et les frais n’ont pas pu être enregistrés.'); const configResponse = await fetch('/api/artisan/config', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ travelConfig: { vehicleType: nextTravel.vehicleType || undefined, consumptionPer100Km: numberOrNull(nextTravel.consumptionPer100Km), electricityPricePerKwh: numberOrNull(nextTravel.electricityPricePerKwh), minimumTravelFee: numberOrNull(nextTravel.minimumTravelFee), freeTravelRadiusKm: numberOrNull(nextTravel.freeTravelRadiusKm) } }) }); const configData = await configResponse.json(); if (!configData?.success) throw new Error('Le point de départ a été enregistré, mais la zone sans frais doit être réessayée.'); if (nextVehicle) { const vehicleResponse = await fetch('/api/profile/vehicle', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nextVehicle) }); const vehicleData = await vehicleResponse.json(); if (!vehicleData?.success) throw new Error('La zone a été enregistrée, mais le véhicule doit être réessayé.'); if (vehicleData.profile) setVehicle(vehicleData.profile) } setProfile(normalize(profileData.profile)); setTravel(nextTravel); result('travel', 'saved', 'Zone et déplacements enregistrés') } catch (cause) { result('travel', 'error', cause instanceof Error ? cause.message : 'Enregistrement impossible.') } }
   const toggleCatalog = async (item: CatalogItem) => { result('services', 'saving'); try { const response = await fetch(`/api/artisan/service-catalog/${item.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !item.is_active }) }); const data = await response.json(); if (!data?.success) throw new Error(data?.error || 'Mise à jour impossible.'); setCatalog(current => current.map(row => row.id === item.id ? data.item : row)); result('services', 'saved', 'Catalogue mis à jour') } catch (cause) { result('services', 'error', cause instanceof Error ? cause.message : 'Mise à jour impossible.') } }
   const toggleServiceProfile = async (item: ServiceProfile) => { result('qualification', 'saving'); try { const response = await fetch(`/api/artisan/service-profiles/${item.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !item.is_active }) }); const data = await response.json(); if (!data?.success) throw new Error(data?.error || 'Mise à jour impossible.'); setServiceProfiles(current => current.map(row => row.id === item.id ? data.profile : row)); result('qualification', 'saved', 'Profil de qualification mis à jour') } catch (cause) { result('qualification', 'error', cause instanceof Error ? cause.message : 'Mise à jour impossible.') } }
   const derived = useMemo(() => ({ activeCatalog: catalog.filter(item => item.is_active), inactiveCatalog: catalog.filter(item => !item.is_active), activeServiceProfiles: serviceProfiles.filter(item => item.is_active), inactiveServiceProfiles: serviceProfiles.filter(item => !item.is_active) }), [catalog, serviceProfiles])
-  return { role, profile, setProfile, catalog, serviceProfiles, vehicle, setVehicle, travel, setTravel, loading, error, status, messages, derived, reload, saveProfile, saveTravelDomain, toggleCatalog, toggleServiceProfile }
+  return { role, profile, setProfile, catalog, serviceProfiles, vehicle, setVehicle, travel, setTravel, loading, error, loadStates, loadErrors, status, messages, derived, reload, saveProfile, saveTravelDomain, toggleCatalog, toggleServiceProfile }
 }
