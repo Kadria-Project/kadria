@@ -11,7 +11,8 @@ import { createAppointmentMutationRequestId, type AppointmentMutationResponse } 
 import AppointmentCreateModal, { type AppointmentCreateForm, type AppointmentProjectOption } from './AppointmentCreateModal';
 import AppointmentQualificationModal from './AppointmentQualificationModal';
 import AppointmentConfirmationModal from './AppointmentConfirmationModal';
-import AppointmentDetailsModal from './AppointmentDetailsModal';
+import AppointmentBriefDrawer from './AppointmentBriefDrawer';
+import AppointmentContextMenu from './AppointmentContextMenu';
 import AppointmentMoveConfirmationModal from './AppointmentMoveConfirmationModal';
 import CalendarBriefing from './CalendarBriefing';
 import AgendaSituationsPanel from './AgendaSituationsPanel';
@@ -21,8 +22,8 @@ import { deriveAgendaDaySummary, getSelectedDayEvents } from './agenda-day-summa
 import ScheduleTimeline from './ScheduleTimeline';
 import TeamScheduleTimeline from './TeamScheduleTimeline';
 import type { CalendarView, PlanningInsights, TeamPlanningMember, TeamPlanningPermissions } from './calendar-workspace-types';
-import { addDays, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
-import { deriveDayReadiness, deriveNextIntervention, deriveScheduleSituations, type ScheduleSituation } from '@/src/lib/calendar/schedule-situations';
+import { addDays, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
+import { deriveDayReadiness, deriveScheduleSituations, type ScheduleSituation } from '@/src/lib/calendar/schedule-situations';
 import { consumeAppointmentQuickCreateRoute, isAppointmentQuickCreate } from './quick-create-command';
 
 type CalendarMode = 'kadria' | 'google';
@@ -61,6 +62,8 @@ export default function CalendarWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<NormalizedCalendarEvent | null>(null);
+  const [contextEvent, setContextEvent] = useState<NormalizedCalendarEvent | null>(null);
+  const [briefEvent, setBriefEvent] = useState<NormalizedCalendarEvent | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -75,7 +78,6 @@ export default function CalendarWorkspace() {
   const [qualifyingEvent, setQualifyingEvent] = useState<NormalizedCalendarEvent | null>(null);
   const [qualificationSaving, setQualificationSaving] = useState(false);
   const [qualificationError, setQualificationError] = useState<string | null>(null);
-  const [currentTime] = useState(() => Date.now());
   const [workHours, setWorkHours] = useState({ start: null as string | null, end: null as string | null });
   const [savingAppointmentIds, setSavingAppointmentIds] = useState<Set<string>>(() => new Set());
   const [teamMembers, setTeamMembers] = useState<TeamPlanningMember[]>([]);
@@ -227,7 +229,6 @@ export default function CalendarWorkspace() {
   const eventTypesByAppointmentId = useMemo(() => Object.fromEntries(appointments.map((appointment) => [appointment.id, appointment.eventType])), [appointments]);
   const agendaDaySummary = useMemo(() => deriveAgendaDaySummary({ events: selectedDayEvents, selectedDate, eventTypesByAppointmentId, workStartTime: workHours.start, workEndTime: workHours.end }), [eventTypesByAppointmentId, selectedDate, selectedDayEvents, workHours.end, workHours.start]);
   const dayReadiness = useMemo(() => deriveDayReadiness({ loading, error, events: selectedDayEvents, situations, insightsVerified: insights !== null }), [error, insights, loading, selectedDayEvents, situations]);
-  const nextAppointment = useMemo(() => deriveNextIntervention(selectedDayEvents, isSameDay(selectedDate, new Date()) ? new Date(currentTime) : startOfDay(selectedDate)), [currentTime, selectedDate, selectedDayEvents]);
   const selectedDayConfirmedCount = useMemo(() => selectedDayEvents.filter((event) => event.confirmation?.status === 'confirmed').length, [selectedDayEvents]);
   const endIsValid = Boolean(form.start && form.end && new Date(form.end).getTime() > new Date(form.start).getTime());
   const teamPlanningAvailable = mode === 'kadria' && Boolean(teamPermissions?.canManageTeamPlanning) && teamMembers.length > 1;
@@ -263,7 +264,7 @@ export default function CalendarWorkspace() {
       openEvent(event, true);
       return;
     }
-    setSelectedEvent(event);
+    setContextEvent(event);
   };
   const openCreate = useCallback((assignedUserId?: string, project?: AppointmentProjectOption | null, date?: Date, trigger?: HTMLButtonElement, suggestedStart?: Date) => {
     const now = suggestedStart ? new Date(suggestedStart) : date ? new Date(date) : new Date();
@@ -290,14 +291,12 @@ export default function CalendarWorkspace() {
       setSelectedEvent(event);
       return;
     }
-    const appointment = appointments.find((item) => item.id === event.rawAppointmentId);
-    if (!appointment) return;
-    if (qualificationAvailable && event.end && new Date(event.end).getTime() <= Date.now()) {
-      setQualificationError(null);
-      setQualifyingEvent(event);
+    if (!edit) {
+      setContextEvent(event);
       return;
     }
-    if (!edit && event.end && new Date(event.end).getTime() > Date.now()) { setSelectedEvent(event); return; }
+    const appointment = appointments.find((item) => item.id === event.rawAppointmentId);
+    if (!appointment) return;
     setForm({
       title: appointment.title || '',
       start: appointment.start ? formatInputDate(new Date(appointment.start)) : '',
@@ -592,11 +591,13 @@ export default function CalendarWorkspace() {
         </div>
         {planningMode === 'team' && teamPlanningAvailable ? <TeamScheduleTimeline view={view} selectedDate={selectedDate} events={events.filter((event) => event.source === 'kadria-appointment')} members={teamMembers} selectedMemberIds={selectedTeamMemberIds} onToggleMember={(memberId) => setSelectedTeamMemberIds((current) => current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId])} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onDaySelect={setSelectedDate} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} onMoveEvent={(event, start, assignedUserId) => void handleTeamMoveEvent(event, start, assignedUserId)} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} /> : <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={(day, trigger, suggestedStart) => openCreate(undefined, undefined, day, trigger, suggestedStart)} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />}
         </section>
-        <AgendaDayInsights summary={agendaDaySummary} situation={situations[0] || null} nextAppointment={nextAppointment} onOpenProject={openProject} />
+        <AgendaDayInsights summary={agendaDaySummary} />
        <AgendaFiltersPopover open={filtersOpen} triggerRef={filtersTriggerRef} confirmation={filterDraft.confirmation} collaborator={filterDraft.collaborator} members={teamMembers} onConfirmationChange={(confirmation) => setFilterDraft((current) => ({ ...current, confirmation }))} onCollaboratorChange={(collaborator) => setFilterDraft((current) => ({ ...current, collaborator }))} onApply={applyFilters} onReset={resetFilters} onClose={() => setFiltersOpen(false)} />
        {pendingMove ? <AppointmentMoveConfirmationModal event={pendingMove.event} previousStart={pendingMove.previousStart} previousEnd={pendingMove.previousEnd} nextStart={pendingMove.nextStart} nextEnd={pendingMove.nextEnd} previousAssigneeName={pendingMove.previousAssigneeName} nextAssigneeName={pendingMove.nextAssigneeName} conflictTitle={pendingMove.conflictTitle} saving={savingAppointmentIds.has(pendingMove.event.rawAppointmentId || '')} error={moveError} onCancel={() => { if (!savingAppointmentIds.has(pendingMove.event.rawAppointmentId || '')) { setPendingMove(null); setMoveError(null); } }} onConfirm={(start, end) => { if (pendingMove.nextAssignedUserId && pendingMove.nextAssignedUserId !== pendingMove.event.assignedUserId) { void persistTeamMoveEvent(pendingMove.event, start, pendingMove.nextAssignedUserId); return; } void persistMoveEvent(pendingMove.event, start, false, end); }} /> : null}
        {loading && <p className="text-sm text-slate-500">Chargement du planning...</p>}
-      {selectedEvent?.rawAppointmentId ? <AppointmentDetailsModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onPrepare={() => { setSelectedEvent(null); setConfirmationError(null); setConfirmingEvent(selectedEvent); }} onManual={() => { setSelectedEvent(null); setConfirmationError(null); setConfirmingEvent(selectedEvent); }} onReplan={() => { const event = selectedEvent; setSelectedEvent(null); openEvent(event, true); }} onEdit={() => { const event = selectedEvent; setSelectedEvent(null); openEvent(event, true); }} onOpenProject={() => openProject(selectedEvent)} /> : selectedEvent && (
+      {contextEvent ? <AppointmentContextMenu event={contextEvent} onClose={() => setContextEvent(null)} onBrief={() => { setBriefEvent(contextEvent); setContextEvent(null); }} onEdit={() => { const event = contextEvent; setContextEvent(null); openEvent(event, true); }} onOpenProject={() => { openProject(contextEvent); setContextEvent(null); }} /> : null}
+      {briefEvent ? <AppointmentBriefDrawer event={briefEvent} onClose={() => setBriefEvent(null)} onEdit={() => { const event = briefEvent; setBriefEvent(null); openEvent(event, true); }} onOpenProject={() => { openProject(briefEvent); setBriefEvent(null); }} /> : null}
+      {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4" onClick={() => setSelectedEvent(null)}>
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-slate-950">{selectedEvent.title}</p><p className="mt-1 text-sm text-slate-500">{selectedEvent.clientName || selectedEvent.projectTitle || 'Rendez-vous'}</p></div><button type="button" onClick={() => setSelectedEvent(null)} aria-label="Fermer le rendez-vous" className="grid size-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100"><X className="size-4" /></button></div>
