@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   getShellCapabilities,
@@ -87,6 +87,15 @@ describe('ShellContextProvider', () => {
     expect(screen.queryByRole('dialog', { name: 'Recherche globale' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Rechercher' }))
     expect(screen.getByRole('dialog', { name: 'Recherche globale' })).toBeInTheDocument()
+  })
+
+  it('treats Clients as a first-level workspace on mobile', () => {
+    navigation.pathname = '/dashboard-v2/clients'
+    const view = render(<ShellContextProvider><KadriaMobileNavigation /></ShellContextProvider>)
+    const scoped = within(view.container)
+    expect(scoped.getByRole('link', { name: 'Clients' })).toHaveAttribute('href', '/dashboard-v2/clients')
+    expect(scoped.getByRole('link', { name: 'Clients' })).toHaveAttribute('aria-current', 'page')
+    expect(scoped.getByRole('link', { name: 'Suivi' })).not.toHaveAttribute('aria-current')
   })
 })
 

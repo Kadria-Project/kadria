@@ -19,7 +19,7 @@ export default function KadriaTopbar() {
       : shellContext.pageType === 'calendar'
         ? { eyebrow: 'Workspace / Agenda', title: 'Agenda' }
         : shellContext.pageType === 'clients'
-          ? { eyebrow: 'Suivi / Clients', title: 'Clients' }
+          ? { eyebrow: 'Workspace / Clients', title: 'Clients' }
           : shellContext.pageType === 'performance'
             ? { eyebrow: 'Workspace / Performance', title: 'Performance' }
             : { eyebrow: 'Workspace / Accueil', title: 'Accueil' };

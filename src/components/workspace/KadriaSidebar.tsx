@@ -33,6 +33,7 @@ const primaryItems = [
   { label: 'À faire', mode: 'tasks' as const, icon: ClipboardCheck },
   { label: 'Suivi', mode: 'commercial' as const, icon: FolderKanban },
   { label: 'Agenda', mode: 'calendar' as const, icon: CalendarDays },
+  { label: 'Clients', mode: 'clients' as const, icon: Users },
   { label: 'Performance', mode: 'value-report' as const, icon: BarChart3 },
 ];
 
@@ -46,11 +47,10 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
   const pathname = usePathname();
   const { shellContext } = useShellContext();
   const [logoutPending, setLogoutPending] = useState(false);
-  const commercialActive = Boolean(pathname?.startsWith('/dashboard-v2/suivi') || pathname?.startsWith('/dashboard-v2/clients'));
+  const commercialActive = Boolean(pathname?.startsWith('/dashboard-v2/suivi'));
   const commercialChildren = [
     { label: 'Vue d’ensemble', href: '/dashboard-v2/suivi', active: pathname === '/dashboard-v2/suivi' },
     { label: 'Tous les projets', href: '/dashboard-v2/suivi/projets', active: Boolean(pathname?.startsWith('/dashboard-v2/suivi/projets')) },
-    { label: 'Clients', href: '/dashboard-v2/clients', active: Boolean(pathname?.startsWith('/dashboard-v2/clients')) },
   ];
 
   const logout = async () => {
