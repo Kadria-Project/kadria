@@ -502,13 +502,8 @@ async function tenantsSupportAutomationSystemState() {
     'automation_last_cron_error_message',
   ]
 
-  for (const column of requiredColumns) {
-    if (!(await tableHasColumn(TENANTS_TABLE, column))) {
-      return false
-    }
-  }
-
-  return true
+  const availability = await Promise.all(requiredColumns.map((column) => tableHasColumn(TENANTS_TABLE, column)))
+  return availability.every(Boolean)
 }
 
 const DEFAULT_AUTOMATION_SYSTEM_STATE: AutomationSystemState = {
@@ -601,8 +596,6 @@ export async function listAutomationOverviewForCurrentTenant(
   if (!(await tableExists(BUSINESS_AUTOMATIONS_TABLE))) {
     return AUTOMATION_TYPES.map((type) => ({ definition: DEFINITIONS[type], automation: buildDefaultAutomation(tenantContext.tenantId, type) }))
   }
-
-  await ensureTenantAutomationRows(tenantContext.tenantId, tenantContext.userId)
 
   const { data, error } = await supabaseAdmin
     .from(BUSINESS_AUTOMATIONS_TABLE)
