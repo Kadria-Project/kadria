@@ -1,2 +1,3 @@
-'use client'
-import SettingsSection from '@/src/components/settings/SettingsSection';import{BillingSettingsView}from '@/src/components/settings/billing/BillingSettingsView';export default function Page(){return <SettingsSection title="Abonnement" description="Consultez votre offre, votre utilisation et les paramètres de facturation de votre espace Kadria."><BillingSettingsView/></SettingsSection>}
+import SettingsSection from '@/src/components/settings/SettingsSection'
+import { BillingSettingsView } from '@/src/components/settings/billing/BillingSettingsView'
+export default function Page() { return <SettingsSection section="billing"><BillingSettingsView /></SettingsSection> }

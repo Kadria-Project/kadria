@@ -56,3 +56,10 @@ test('active application code no longer links to legacy settings query sections'
   const offenders = (await Promise.all(files.filter((file) => !file.endsWith('settings-navigation.test.ts')).map(async (file) => ({ file, source: await readFile(file, 'utf8') })))).filter(({ source }) => source.includes('/parametres?section='))
   assert.deepEqual(offenders.map(({ file }) => path.relative(root, file)), [])
 })
+
+test('SettingsSection only accepts an explicit registry section id', async () => {
+  const source = await readFile(path.join(process.cwd(), 'src/components/settings/SettingsSection.tsx'), 'utf8')
+  assert.ok(source.includes('section: SettingsSectionId'))
+  assert.ok(!source.includes('item.label === title'))
+  assert.ok(!source.includes('title?:'))
+})

@@ -1,17 +1,14 @@
 import type { ReactNode } from 'react'
-import { SETTINGS_SECTIONS, getSettingsSection, type SettingsSectionId } from '@/src/lib/settings-navigation'
+import { getSettingsSection, type SettingsSectionId } from '@/src/lib/settings-navigation'
 
 type Props = {
-  section?: SettingsSectionId
-  /** Transitional props retained while canonical pages move to section ids. */
-  title?: string
-  description?: string
+  section: SettingsSectionId
   children: ReactNode
 }
 
-export default function SettingsSection({ section: sectionId, title, children }: Props) {
-  const section = sectionId ? getSettingsSection(sectionId) : SETTINGS_SECTIONS.find((item) => item.label === title || (title === 'Mon entreprise' && item.id === 'company'))
-  if (!section) return null
+export default function SettingsSection({ section: sectionId, children }: Props) {
+  const section = getSettingsSection(sectionId)
+  if (!section) throw new Error(`Unknown settings section: ${sectionId}`)
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
       <nav aria-label="Fil d’Ariane" className="mb-4 text-sm text-slate-500">Workspace <span aria-hidden="true">/</span> Paramètres <span aria-hidden="true">/</span> <span className="text-slate-700">{section.label}</span></nav>

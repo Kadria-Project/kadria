@@ -1,2 +1,3 @@
-'use client'
-import SettingsSection from '@/src/components/settings/SettingsSection';import{AutomationSettingsView}from '@/src/components/settings/automations/AutomationSettingsView';export default function Page(){return <SettingsSection title="Automatisations" description="Choisissez les actions que Kadria suggère, soumet à validation ou exécute automatiquement."><AutomationSettingsView/></SettingsSection>}
+import SettingsSection from '@/src/components/settings/SettingsSection'
+import { AutomationSettingsView } from '@/src/components/settings/automations/AutomationSettingsView'
+export default function Page() { return <SettingsSection section="automations"><AutomationSettingsView /></SettingsSection> }
