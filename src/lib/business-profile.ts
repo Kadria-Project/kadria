@@ -154,6 +154,24 @@ export async function updateServiceCatalogItem(
   return { row: (data as ArtisanServiceCatalogRow) || null, error: null, tableMissing: false }
 }
 
+export async function deleteServiceCatalogItem(
+  artisanId: string,
+  id: string
+): Promise<{ error: string | null; tableMissing: boolean }> {
+  const { error } = await supabaseAdmin
+    .from('artisan_service_catalog')
+    .delete()
+    .eq('artisan_id', artisanId)
+    .eq('id', id)
+
+  if (error) {
+    if (tableMissing(error)) return { error: 'Table artisan_service_catalog introuvable', tableMissing: true }
+    return { error: error.message, tableMissing: false }
+  }
+
+  return { error: null, tableMissing: false }
+}
+
 export interface ArtisanTradeContext {
   primaryTrade: string
   coveredTrades: string[]

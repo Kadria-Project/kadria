@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
-import { updateServiceCatalogItem } from '@/src/lib/business-profile'
+import { deleteServiceCatalogItem, updateServiceCatalogItem } from '@/src/lib/business-profile'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -41,6 +41,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ success: true, item: row })
   } catch (error) {
     console.error('[SERVICE CATALOG PATCH]', error instanceof Error ? error.message : String(error))
+    return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getSession()
+    if (!session) return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+
+    const { id } = await params
+    const { error, tableMissing } = await deleteServiceCatalogItem(session.artisanId, id)
+    if (tableMissing) return NextResponse.json({ success: false, error: 'Le catalogue de prestations est indisponible.' }, { status: 503 })
+    if (error) return NextResponse.json({ success: false, error }, { status: 500 })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[SERVICE CATALOG DELETE]', error instanceof Error ? error.message : String(error))
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }
 }

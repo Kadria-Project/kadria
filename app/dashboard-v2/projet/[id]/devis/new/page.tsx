@@ -63,10 +63,11 @@ interface DevisLine {
 
 interface Prestation {
   id: string;
-  description: string;
-  unit: string;
-  unitPrice: number;
-  tvaRate: number;
+  name: string;
+  unit: string | null;
+  price_ht: number | null;
+  vat_rate: number | null;
+  is_active: boolean;
 }
 
 function makeLineId() {
@@ -333,9 +334,9 @@ function NewDevis() {
     setShowPrestationsModal(true);
     setLoadingPrestations(true);
     try {
-      const res = await fetch('/api/artisan/prestations');
+      const res = await fetch('/api/artisan/service-catalog');
       const data = await res.json();
-      if (data.success) setPrestations(data.prestations);
+      if (data.success) setPrestations((data.items || []).filter((item: Prestation) => item.is_active));
     } catch {
       // ignore
     } finally {
@@ -349,11 +350,11 @@ function NewDevis() {
       {
         id: makeLineId(),
         type: 'item',
-        description: prestation.description,
+        description: prestation.name,
         quantity: 1,
-        unit: prestation.unit,
-        unitPrice: prestation.unitPrice,
-        tvaRate: prestation.tvaRate,
+        unit: prestation.unit || 'u',
+        unitPrice: prestation.price_ht || 0,
+        tvaRate: prestation.vat_rate ?? getDefaultVatRate(),
       },
     ]);
   };
@@ -362,19 +363,19 @@ function NewDevis() {
     if (!newPrestation.description.trim()) return;
     setSavingPrestation(true);
     try {
-      const res = await fetch('/api/artisan/prestations', {
+      const res = await fetch('/api/artisan/service-catalog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          description: newPrestation.description,
+          name: newPrestation.description,
           unit: newPrestation.unit,
-          unitPrice: Number(newPrestation.unitPrice) || 0,
+          priceHt: Number(newPrestation.unitPrice) || 0,
           tvaRate: newPrestation.tvaRate,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setPrestations(data.prestations);
+        setPrestations((current) => [...current, data.item]);
         setNewPrestation({ description: '', unit: 'u', unitPrice: '', tvaRate: artisanConfig?.devisTvaDefaut || 10 });
       }
     } catch {
@@ -386,9 +387,9 @@ function NewDevis() {
 
   const deletePrestation = async (id: string) => {
     try {
-      const res = await fetch(`/api/artisan/prestations?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const res = await fetch(`/api/artisan/service-catalog/${encodeURIComponent(id)}`, { method: 'DELETE' });
       const data = await res.json();
-      if (data.success) setPrestations(data.prestations);
+      if (data.success) setPrestations((current) => current.filter((item) => item.id !== id));
     } catch {
       // ignore
     }
@@ -768,7 +769,7 @@ function NewDevis() {
               <input style={inputStyle} type="date" value={dateEmission} onChange={(e) => setDateEmission(e.target.value)} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <label style={labelStyle}>Valable jusqu'au</label>
+              <label style={labelStyle}>Valable jusqu&apos;au</label>
               <input style={inputStyle} type="date" value={dateValidite} onChange={(e) => setDateValidite(e.target.value)} />
             </div>
           </div>
@@ -871,7 +872,7 @@ function NewDevis() {
           })()}
           {appliedTemplateName && (
             <p style={{ fontSize: '12px', color: 'var(--accent)', margin: '10px 0 0' }}>
-              Modèle appliqué : {appliedTemplateName}. Vérifiez les prestations avant d'envoyer le devis.
+              Modèle appliqué : {appliedTemplateName}. Vérifiez les prestations avant d&apos;envoyer le devis.
             </p>
           )}
           {quoteSettingsApplied && (
@@ -1140,7 +1141,7 @@ function NewDevis() {
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--text-2)', marginBottom: recapAlerts.length > 0 ? '16px' : 0 }}>
-            <p style={{ margin: 0 }}>Valable jusqu'au : {dateValidite || 'non renseignée'}</p>
+            <p style={{ margin: 0 }}>Valable jusqu&apos;au : {dateValidite || 'non renseignée'}</p>
             {depositPercent != null && (
               <p style={{ margin: 0 }}>Acompte demandé : {depositPercent}%</p>
             )}
@@ -1359,10 +1360,10 @@ function NewDevis() {
                   >
                     <div style={{ minWidth: 0 }}>
                       <p style={{ color: 'var(--text-1)', fontSize: '13px', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.description}
+                        {p.name}
                       </p>
                       <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
-                        {p.unitPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € / {p.unit} — TVA {p.tvaRate}%
+                        {(p.price_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € / {p.unit || 'u'} — TVA {p.vat_rate ?? getDefaultVatRate()}%
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
