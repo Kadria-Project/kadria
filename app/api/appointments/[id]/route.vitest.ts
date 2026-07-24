@@ -14,10 +14,15 @@ vi.mock('@vercel/functions', () => ({ waitUntil: vi.fn() }))
 
 import { validateWorkspaceAppointmentPatch } from './route'
 
-test('workspace PATCH accepts only its minimal mutation fields', () => {
-  expect(() => validateWorkspaceAppointmentPatch({ projectId: 'p1', title: 'Visite', start: '2026-08-01T09:00', end: '2026-08-01T10:00', location: '', description: '', client_name: 'Camille', client_email: 'camille@example.test', client_phone: '0600000000' })).not.toThrow()
-  expect(() => validateWorkspaceAppointmentPatch({ projectId: 'p1', status: 'cancelled' })).toThrow('Champ non autorisé.')
-  expect(() => validateWorkspaceAppointmentPatch({ projectId: 'p1', assignedUserId: 'u2' })).toThrow('Champ non autorisé.')
+test('workspace PATCH accepts the canonical appointment edit payload and rejects unknown fields for every appointment', () => {
+  const payload = { projectId: 'p1', title: 'Visite', start: '2026-08-01T09:00', end: '2026-08-01T10:00', location: '12 rue de la Paix', description: '', client_name: 'Camille', client_email: 'camille@example.test', client_phone: '0600000000', assignedUserId: 'u2', eventType: 'appointment', requestId: 'request-1' }
+  expect(() => validateWorkspaceAppointmentPatch(payload)).not.toThrow()
+  expect(() => validateWorkspaceAppointmentPatch({ ...payload, location: null })).not.toThrow()
+  expect(() => validateWorkspaceAppointmentPatch({ ...payload, location: '   ' })).not.toThrow()
+  expect(() => validateWorkspaceAppointmentPatch({ ...payload, location: 'x'.repeat(501) })).toThrow("L’adresse du rendez-vous n’a pas pu être enregistrée")
+  expect(() => validateWorkspaceAppointmentPatch({ ...payload, location: { value: '12 rue de la Paix' } })).toThrow("L’adresse du rendez-vous n’a pas pu être enregistrée")
+  expect(() => validateWorkspaceAppointmentPatch({ ...payload, unknown_field: true })).toThrow('Ce champ ne peut pas être modifié')
+  expect(() => validateWorkspaceAppointmentPatch({ title: 'Sans projet', unknown_field: true })).toThrow('Ce champ ne peut pas être modifié')
 })
 
 test('appointment route scopes reads and mutations to project and tenant and returns only a DTO', async () => {

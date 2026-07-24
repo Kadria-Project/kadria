@@ -427,10 +427,11 @@ export default function CalendarWorkspace() {
     }
   };
   const handleUpdate = async () => {
-    if (!editingAppointmentId || !form.title.trim() || !form.start || !form.end || !endIsValid) {
+    if (creating || createSubmissionRef.current || !editingAppointmentId || !form.title.trim() || !form.start || !form.end || !endIsValid) {
       setCreateError('V\u00e9rifiez le motif, le d\u00e9but et la fin du rendez-vous.');
       return;
     }
+    createSubmissionRef.current = true;
     setCreating(true);
     setCreateError(null);
     const requestId = createAppointmentMutationRequestId();
@@ -440,14 +441,18 @@ export default function CalendarWorkspace() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || null, description: form.description || null, client_name: form.clientName, client_email: form.clientEmail, client_phone: form.clientPhone, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType, requestId }),
       });
-      const json = await response.json() as AppointmentMutationResponse;
-      if (!response.ok || !json?.success) throw new Error(json?.error || "La modification n'a pas pu etre enregistree.");
+      const json = await response.json() as AppointmentMutationResponse & { field?: string; error?: string };
+      if (!response.ok || !json?.success) {
+        const fallback = json?.field === 'location' ? "L’adresse du rendez-vous n’a pas pu être enregistrée." : "La modification n'a pas pu être enregistrée.";
+        throw new Error(json?.error || fallback);
+      }
       setEditingAppointmentId(null);
       await fetchAppointments();
       setSuccessMessage(appointmentMutationFeedback(json, 'Rendez-vous modifié.'));
     } catch (updateError) {
       setCreateError(updateError instanceof Error ? updateError.message : "La modification n'a pas pu etre enregistree.");
     } finally {
+      createSubmissionRef.current = false;
       setCreating(false);
     }
   };

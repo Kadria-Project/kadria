@@ -38,7 +38,11 @@ function matchesWorkspaceProject(value: unknown, projectId: string | null) {
   return !projectId || String(value || '') === projectId
 }
 
-const workspacePatchFields = new Set(['title', 'start', 'end', 'location', 'description', 'projectId', 'client_name', 'client_email', 'client_phone', 'requestId'])
+const workspacePatchFields = new Set(['title', 'start', 'end', 'location', 'description', 'projectId', 'client_name', 'client_email', 'client_phone', 'assignedUserId', 'eventType', 'move', 'resize', 'forceConflict', 'requestId'])
+
+export class WorkspacePatchValidationError extends Error {
+  constructor(public field: string, message: string) { super(message) }
+}
 
 function optionalText(value: unknown, maxLength = 255) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) || null : null
@@ -51,9 +55,11 @@ function normalizeEmail(value: unknown) {
 }
 
 export function validateWorkspaceAppointmentPatch(body: Record<string, unknown>) {
-  if (typeof body.projectId !== 'string' || !body.projectId.trim()) return
   const unknown = Object.keys(body).find((key) => !workspacePatchFields.has(key))
-  if (unknown) throw new Error('Champ non autorisé.')
+  if (unknown) throw new WorkspacePatchValidationError(unknown, 'Ce champ ne peut pas être modifié depuis le rendez-vous.')
+  if (body.location !== undefined && body.location !== null && (typeof body.location !== 'string' || body.location.trim().length > 500)) {
+    throw new WorkspacePatchValidationError('location', "L’adresse du rendez-vous n’a pas pu être enregistrée.")
+  }
 }
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -89,7 +95,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!body) {
       return NextResponse.json({ success: false, error: 'Corps de requête invalide' }, { status: 400 })
     }
-    try { validateWorkspaceAppointmentPatch(body as Record<string, unknown>) } catch (error) { return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Corps de requête invalide' }, { status: 400 }) }
+    try { validateWorkspaceAppointmentPatch(body as Record<string, unknown>) } catch (error) {
+      if (error instanceof WorkspacePatchValidationError) return NextResponse.json({ success: false, code: 'INVALID_FIELD', field: error.field, error: error.message, message: error.message }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Corps de requête invalide' }, { status: 400 })
+    }
 
     const requestId = normalizeAppointmentMutationRequestId((body as AppointmentMutationRequest).requestId)
     const confirmationAvailable = await tableHasColumn('project_appointments', 'confirmation_status')
@@ -146,6 +155,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
     const nextClientEmail = body.client_email === undefined ? (existing.client_email ? String(existing.client_email) : null) : normalizeEmail(body.client_email)
     if (nextClientEmail === undefined) return NextResponse.json({ success: false, error: 'Adresse e-mail invalide' }, { status: 400 })
+    const nextLocation = body.location === undefined ? (existing.location ? String(existing.location) : null) : optionalText(body.location, 500)
 
     if (nextAssignedUserId) {
       const assignableMembers = await listAssignableAppointmentMembers(tenantContext.tenantId)
@@ -233,7 +243,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       ...(body.title !== undefined ? { title: String(body.title || '') } : {}),
       ...(body.start !== undefined ? { start_time: nextStart } : {}),
       ...(body.end !== undefined ? { end_time: nextEnd } : {}),
-      ...(body.location !== undefined ? { location: body.location ? String(body.location) : null } : {}),
+      ...(body.location !== undefined ? { location: nextLocation } : {}),
       ...(body.description !== undefined ? { description: body.description ? String(body.description) : null } : {}),
       ...(body.projectId !== undefined ? { project_id: nextProjectId } : {}),
       ...(body.client_name !== undefined ? { client_name: optionalText(body.client_name) } : {}),
