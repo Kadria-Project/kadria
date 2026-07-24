@@ -1,49 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  getAutomationMonitoringOverviewForCurrentTenant,
+  getAutomationSettingsCriticalDataForCurrentTenant,
   upsertAutomationForCurrentTenant,
   type BusinessAutomationChannel,
   type BusinessAutomationMode,
   type BusinessAutomationType,
 } from '@/src/lib/automations'
-import { getSession } from '@/src/lib/auth-utils'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { checkPermission } from '@/src/lib/team/access'
 
 export async function GET() {
+  const startedAt = Date.now()
   try {
-    const session = await getSession().catch(() => null)
     const tenantContext = await getCurrentTenantContext().catch(() => null)
     const canRead = tenantContext ? checkPermission(tenantContext, 'automations.read') : false
     const canManage = tenantContext ? checkPermission(tenantContext, 'automations.manage') : false
 
-    console.info('[AUTOMATIONS GET]', {
-      sessionUserId: session?.id || null,
-      sessionEmail: session?.email || null,
-      tenantContext: tenantContext
-        ? {
-            tenantId: tenantContext.tenantId,
-            role: tenantContext.role,
-            membershipStatus: tenantContext.membership.status,
-            userId: tenantContext.userId,
-            legacyArtisanId: tenantContext.legacyArtisanId,
-            tenantName: tenantContext.tenant.name,
-          }
-        : null,
-      tenantContextRole: tenantContext?.role || null,
-      tenantContextMembershipStatus: tenantContext?.membership.status || null,
-      tenantContextTenantId: tenantContext?.tenantId || null,
-      automationsRead: canRead,
-      automationsManage: canManage,
-    })
-
-    const overview = await getAutomationMonitoringOverviewForCurrentTenant(tenantContext)
+    const overview = await getAutomationSettingsCriticalDataForCurrentTenant(tenantContext)
+    console.info('[SETTINGS_METRIC]', { page: 'automations', operation: 'critical-load', durationMs: Date.now() - startedAt, outcome: 'success' })
     return NextResponse.json({
       success: true,
       items: overview.items,
-      summary: overview.summary,
       systemState: overview.systemState,
-      recentRuns: overview.recentRuns,
       permissions: {
         canRead,
         canManage,
@@ -55,11 +33,8 @@ export async function GET() {
       message === 'TENANT_CONTEXT_REQUIRED' ? 401 :
       message === 'FORBIDDEN' ? 403 :
       message === 'AUTOMATIONS_TABLE_MISSING' ? 503 : 500
-    console.error('[AUTOMATIONS GET ERROR]', {
-      status,
-      message,
-    })
-    return NextResponse.json({ success: false, error: message }, { status })
+    console.error('[SETTINGS_METRIC]', { page: 'automations', operation: 'critical-load', durationMs: Date.now() - startedAt, outcome: 'error', status, code: message })
+    return NextResponse.json({ success: false, error: 'Chargement des automatisations impossible. Réessayez dans quelques instants.' }, { status })
   }
 }
 

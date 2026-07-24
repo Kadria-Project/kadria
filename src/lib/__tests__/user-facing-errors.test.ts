@@ -19,3 +19,10 @@ test('never returns a raw technical message to the interface', () => {
   assert.equal(translated, 'Le document n’a pas pu être envoyé. Réessayez dans quelques instants.')
   assert.equal(translated.includes('ECONNRESET'), false)
 })
+
+test('does not expose a Resend recipient error in automation settings', () => {
+  const message = toUserFacingErrorMessage('Invalid `to` field. Please use our testing email address instead of domains like `example.com`.', 'automation')
+
+  assert.equal(message, 'L’adresse e-mail du client semble invalide. Vérifiez-la avant de réessayer.')
+  assert.doesNotMatch(message, /resend|example\.com/i)
+})

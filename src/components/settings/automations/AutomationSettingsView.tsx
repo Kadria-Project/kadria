@@ -16,6 +16,7 @@ function AutomationCard({ item, data }: { item: AutomationItem; data: ReturnType
 
 export function AutomationSettingsView() {
   const data = useAutomationSettingsData()
+  if (data.error && !data.loading && !data.permissions.canRead) return <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p>{data.error}</p><button type="button" onClick={() => void data.load()} className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 font-medium">Réessayer</button></div>
   if (data.loading) return <div className="rounded-xl border border-slate-200 bg-white p-5">Chargement des automatisations…</div>
   if (!data.permissions.canRead) return <ReadOnlyNotice message="Vous n’avez pas accès aux automatisations." />
   return <div className="space-y-4">

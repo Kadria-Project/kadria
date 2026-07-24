@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
 import { getCalendarIntegration } from '@/src/lib/google-calendar'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { checkPermission } from '@/src/lib/team/access'
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const session = await getSession()
     if (!session) {
@@ -12,7 +12,9 @@ export async function GET(_request: NextRequest) {
     }
 
     const tenantContext = await getCurrentTenantContext()
-    if (!checkPermission(tenantContext, 'integrations.read')) {
+    const canRead = checkPermission(tenantContext, 'integrations.read')
+    const canManage = checkPermission(tenantContext, 'integrations.manage')
+    if (!canRead) {
       return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
     }
 
@@ -22,11 +24,11 @@ export async function GET(_request: NextRequest) {
       // Table pas encore créée en base (migration non exécutée) : on
       // renvoie un état "non connecté" propre plutôt que de faire planter
       // la requête.
-      return NextResponse.json({ success: true, connected: false, provider: null, email: null, connectedAt: null, updatedAt: null })
+      return NextResponse.json({ success: true, connected: false, provider: null, email: null, connectedAt: null, updatedAt: null, permissions: { canRead, canManage } })
     }
 
     if (!row || !row.is_connected) {
-      return NextResponse.json({ success: true, connected: false, provider: null, email: null, connectedAt: null, updatedAt: null })
+      return NextResponse.json({ success: true, connected: false, provider: null, email: null, connectedAt: null, updatedAt: null, permissions: { canRead, canManage } })
     }
 
     return NextResponse.json({
@@ -36,6 +38,7 @@ export async function GET(_request: NextRequest) {
       email: row.calendar_email,
       connectedAt: row.created_at,
       updatedAt: row.updated_at,
+      permissions: { canRead, canManage },
     })
   } catch (error) {
     console.error('[GOOGLE CALENDAR STATUS]', error instanceof Error ? error.message : String(error))

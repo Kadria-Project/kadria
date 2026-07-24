@@ -156,6 +156,11 @@ export interface AutomationHistoryRunItem {
   canRetry: boolean
 }
 
+export interface AutomationSettingsCriticalData {
+  items: AutomationOverviewItem[]
+  systemState: AutomationSystemState
+}
+
 interface QuoteFollowupCronDebugSummary {
   automationsEvaluated: number
   projectsScanned: number
@@ -285,7 +290,9 @@ function mapAutomation(row: Record<string, unknown>): BusinessAutomationRecord {
     lastRunAt: toNullableText(row.last_run_at),
     lastSuccessAt: toNullableText(row.last_success_at),
     lastErrorAt: toNullableText(row.last_error_at),
-    lastErrorMessage: toNullableText(row.last_error_message),
+    // Les détails techniques restent stockés pour le diagnostic serveur, mais
+    // ne doivent jamais être renvoyés tels quels dans les Paramètres.
+    lastErrorMessage: mapAutomationErrorToLabel(toNullableText(row.last_error_message)),
   }
 }
 
@@ -541,7 +548,7 @@ async function getTenantAutomationSystemState(tenantId: string): Promise<Automat
     lastCronAt: toNullableText(data.automation_last_cron_at),
     lastCronSuccessAt: toNullableText(data.automation_last_cron_success_at),
     lastCronErrorAt: toNullableText(data.automation_last_cron_error_at),
-    lastCronErrorMessage: toNullableText(data.automation_last_cron_error_message),
+    lastCronErrorMessage: mapAutomationErrorToLabel(toNullableText(data.automation_last_cron_error_message)),
   }
 }
 
@@ -947,6 +954,27 @@ export async function getAutomationMonitoringOverviewForCurrentTenant(
     summary: history.summary,
     recentRuns: history.runs,
   }
+}
+
+/**
+ * Données nécessaires pour rendre immédiatement la page Paramètres.
+ * Le journal et ses agrégats, bien plus coûteux, restent chargés séparément
+ * par le client après l'affichage des règles et de la pause générale.
+ */
+export async function getAutomationSettingsCriticalDataForCurrentTenant(
+  tenantContextInput?: TenantContext | null,
+): Promise<AutomationSettingsCriticalData> {
+  const tenantContext = requireAutomationPermission(
+    tenantContextInput ?? await getCurrentTenantContext(),
+    'automations.read',
+  )
+
+  const [items, systemState] = await Promise.all([
+    listAutomationOverviewForCurrentTenant(tenantContext),
+    getTenantAutomationSystemState(tenantContext.tenantId),
+  ])
+
+  return { items, systemState }
 }
 
 export function buildIdempotencyKey(params: {
