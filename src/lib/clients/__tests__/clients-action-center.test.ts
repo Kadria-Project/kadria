@@ -164,3 +164,15 @@ test('the "Toutes les actions" panel keeps its own independent local category fi
   assert.ok(!actionsPanelSource.includes('activeAttentionReason'), 'panel must not read the Clients list attention-reason filter')
   assert.ok(!actionsPanelSource.includes('attentionReasonFilter'), 'panel must not read the Clients list attention-reason filter')
 })
+
+test('ClientsV2List keeps selection local and the brief does not trigger a request', () => {
+  const rowSource = clientsV2ListSource.slice(clientsV2ListSource.indexOf('function ClientListRow'), clientsV2ListSource.indexOf('function ClientCard'))
+  const briefSource = clientsV2ListSource.slice(clientsV2ListSource.indexOf('function ClientBrief'), clientsV2ListSource.indexOf('export default function ClientsV2List'))
+  assert.ok(clientsV2ListSource.includes('useState<string | null>(null)'), 'the selected client must be stored locally')
+  assert.ok(clientsV2ListSource.includes("response?.items.some((client) => client.id === selectedClientId) ? selectedClientId : response?.items[0]?.id ?? null"), 'selection must fall back to the first visible client')
+  assert.ok(rowSource.includes('aria-selected={selected}'), 'the selected row must be exposed to assistive technology')
+  assert.ok(rowSource.includes('onClick={onSelect}'), 'a simple row click must only select')
+  assert.ok(rowSource.includes('onDoubleClick={() => { if (canOpen) onOpen() }}'), 'a double click must keep the explicit open action')
+  assert.ok(!rowSource.includes('fetch('), 'selecting a row must not create a request')
+  assert.ok(!briefSource.includes('fetch('), 'rendering the brief must not create a request')
+})
