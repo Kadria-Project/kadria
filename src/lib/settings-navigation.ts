@@ -1,8 +1,8 @@
 import type { LucideIcon } from 'lucide-react'
-import { Bell, Bot, Building2, CreditCard, KeyRound, Link2, SlidersHorizontal, UsersRound } from 'lucide-react'
+import { Bell, Bot, Building2, CreditCard, FileText, KeyRound, Link2, ListChecks, SlidersHorizontal, UsersRound } from 'lucide-react'
 
 export type SettingsGroupId = 'company' | 'clients' | 'organization' | 'account'
-export type SettingsSectionId = 'company' | 'activity' | 'assistants' | 'automations' | 'connections' | 'notifications' | 'team' | 'access' | 'billing'
+export type SettingsSectionId = 'company' | 'activity' | 'catalog' | 'quotes' | 'assistants' | 'automations' | 'connections' | 'notifications' | 'team' | 'access' | 'billing'
 
 export type SettingsGroup = { id: SettingsGroupId; label: string; order: number }
 export type SettingsSection = {
@@ -25,7 +25,9 @@ export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: 'company', label: 'Entreprise', description: 'Les informations utilisées par Kadria pour identifier et représenter votre entreprise.', href: '/parametres/entreprise', group: 'company', order: 1, icon: Building2, aliases: ['entreprise'] },
-  { id: 'activity', label: 'Activité', description: 'Expliquez à Kadria les travaux que vous réalisez et les zones dans lesquelles vous intervenez.', href: '/parametres/activite', group: 'company', order: 2, icon: SlidersHorizontal, aliases: ['activite', 'profil-metier', 'catalogue'] },
+  { id: 'activity', label: 'Activité', description: 'Expliquez à Kadria les travaux que vous réalisez et les zones dans lesquelles vous intervenez.', href: '/parametres/activite', group: 'company', order: 2, icon: SlidersHorizontal, aliases: ['activite', 'profil-metier'] },
+  { id: 'catalog', label: 'Catalogue', description: 'Gérez les prestations, tarifs, unités et taux de TVA réutilisés dans vos devis.', href: '/parametres/catalogue', group: 'company', order: 3, icon: ListChecks, aliases: ['catalogue'] },
+  { id: 'quotes', label: 'Devis et documents', description: 'Définissez les valeurs par défaut et les informations reprises dans vos documents commerciaux.', href: '/parametres/devis', group: 'company', order: 4, icon: FileText, aliases: ['devis', 'documents'] },
   { id: 'assistants', label: 'Assistants', description: 'Configurez la manière dont Kadria accueille et accompagne vos clients.', href: '/parametres/assistants', group: 'clients', order: 1, icon: Bot, aliases: ['assistant', 'assistants', 'widget'] },
   { id: 'automations', label: 'Automatisations', description: 'Choisissez les actions que Kadria peut préparer, soumettre à validation ou exécuter.', href: '/parametres/automatisations', group: 'clients', order: 2, icon: SlidersHorizontal, aliases: ['automatisations'] },
   { id: 'connections', label: 'Connexions', description: 'Reliez Kadria aux services que vous utilisez au quotidien.', href: '/parametres/connexions', group: 'clients', order: 3, icon: Link2, aliases: ['connexions'] },

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { hasPermission } from '@/src/lib/team/permission-matrix'
 import { ReadOnlyNotice } from '@/src/components/settings/ReadOnlyNotice'
@@ -49,7 +50,7 @@ export function ActivitySettingsView() {
         <label className="text-sm font-medium text-slate-700">Spécialités / travaux acceptés<input className={input} disabled={readOnly} value={profile.specialties.join(', ')} onChange={e => update('specialties', split(e.target.value))} /></label>
         <label className="text-sm font-medium text-slate-700">Travaux refusés<input className={input} disabled={readOnly} value={profile.excludedServices.join(', ')} onChange={e => update('excludedServices', split(e.target.value))} /></label>
       </div>
-      <div className="mt-5 border-t border-slate-100 pt-4"><p className="text-sm font-medium text-slate-800">Catalogue de prestations</p><DomainState domain="catalog" activity={activity} />{activity.loadStates.catalog === 'ready' && (activity.catalog.length ? <div className="mt-2 divide-y divide-slate-100">{activity.catalog.map(item => <div key={item.id} className="flex items-center justify-between gap-3 py-2"><span className="text-sm text-slate-700">{item.name}</span><button type="button" disabled={readOnly} onClick={() => void activity.toggleCatalog(item)} className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 disabled:opacity-60">{item.is_active ? 'Désactiver' : 'Activer'}</button></div>)}</div> : <p className="mt-2 text-sm text-slate-500">Aucune prestation à configurer.</p>)}</div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><div><p className="text-sm font-medium text-slate-800">Catalogue de prestations</p><DomainState domain="catalog" activity={activity} />{activity.loadStates.catalog === 'ready' && <p className="mt-1 text-sm text-slate-500">{activity.catalog.length} prestation{activity.catalog.length > 1 ? 's' : ''} configurée{activity.catalog.length > 1 ? 's' : ''} · {activity.derived.activeCatalog.length} active{activity.derived.activeCatalog.length > 1 ? 's' : ''}</p>}</div><Link href="/parametres/catalogue" className="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-medium text-emerald-700">Gérer le catalogue</Link></div>
       <Save disabled={readOnly} saving={activity.status.trade === 'saving'} message={activity.messages.trade} onClick={() => void activity.saveProfile('trade', { primaryTrade: profile.primaryTrade, coveredTrades: profile.coveredTrades, specialties: profile.specialties, excludedServices: profile.excludedServices })} />
     </SettingsPanel>
     <SettingsPanel title="Qualification des demandes" description="Kadria utilise ces règles pour poser les bonnes questions et préparer des dossiers exploitables." status={activity.derived.activeServiceProfiles.length ? 'complete' : 'incomplete'}>

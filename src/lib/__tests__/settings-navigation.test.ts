@@ -17,14 +17,14 @@ test('settings registry has unique canonical sections, routes and complete metad
 
 test('settings navigation preserves the intended group and section order', () => {
   assert.deepEqual(SETTINGS_GROUPS.map((group) => group.id), ['company', 'clients', 'organization', 'account'])
-  assert.deepEqual(getSettingsSectionsByGroup('company').map((section) => section.id), ['company', 'activity'])
+  assert.deepEqual(getSettingsSectionsByGroup('company').map((section) => section.id), ['company', 'activity', 'catalog', 'quotes'])
   assert.deepEqual(getSettingsSectionsByGroup('clients').map((section) => section.id), ['assistants', 'automations', 'connections', 'notifications'])
   assert.deepEqual(getSettingsSectionsByGroup('organization').map((section) => section.id), ['team'])
   assert.deepEqual(getSettingsSectionsByGroup('account').map((section) => section.id), ['access', 'billing'])
 })
 
 test('legacy settings destinations resolve to canonical routes without loops', () => {
-  const destinations: Record<string, string> = { entreprise: '/parametres/entreprise', activite: '/parametres/activite', 'profil-metier': '/parametres/activite', catalogue: '/parametres/activite', widget: '/parametres/assistants', assistant: '/parametres/assistants', assistants: '/parametres/assistants', automatisations: '/parametres/automatisations', connexions: '/parametres/connexions', notifications: '/parametres/notifications', equipe: '/parametres/equipe', acces: '/parametres/acces', securite: '/parametres/acces', abonnement: '/parametres/abonnement' }
+  const destinations: Record<string, string> = { entreprise: '/parametres/entreprise', activite: '/parametres/activite', 'profil-metier': '/parametres/activite', catalogue: '/parametres/catalogue', devis: '/parametres/devis', documents: '/parametres/devis', widget: '/parametres/assistants', assistant: '/parametres/assistants', assistants: '/parametres/assistants', automatisations: '/parametres/automatisations', connexions: '/parametres/connexions', notifications: '/parametres/notifications', equipe: '/parametres/equipe', acces: '/parametres/acces', securite: '/parametres/acces', abonnement: '/parametres/abonnement' }
   assert.equal(resolveLegacySettingsDestination('/parametres'), '/parametres/entreprise')
   assert.equal(resolveLegacySettingsDestination('/parametres/profil-metier'), '/parametres/activite')
   assert.equal(resolveLegacySettingsDestination('/parametres/automatisations/historique'), null)
