@@ -3,6 +3,7 @@ import { TABLES } from '@/src/lib/airtable'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
 import { formatSmartDateFr } from '@/src/lib/date-format'
+import { formatAppointmentStatus, formatProjectStatus, formatQuoteStatus } from '@/src/lib/status-presentation'
 import {
   cleanGlobalSearchQuery,
   escapePostgrestLike,
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
         category: 'project', label: 'Projets', results: (projects.data || []).map((item) => {
           const row = item as Record<string, unknown>
           const id = value(row, 'id')
-          return { id, title: value(row, 'project_title') || value(row, 'project_type') || 'Projet', subtitle: nullableValue(row, 'client_first_name') || nullableValue(row, 'client_name') || nullableValue(row, 'city'), status: nullableValue(row, 'status'), route: globalSearchRoute('project', { id }) }
+          return { id, title: value(row, 'project_title') || value(row, 'project_type') || 'Projet', subtitle: nullableValue(row, 'client_first_name') || nullableValue(row, 'client_name') || nullableValue(row, 'city'), status: formatProjectStatus(nullableValue(row, 'status')), route: globalSearchRoute('project', { id }) }
         }),
       },
       {
@@ -78,14 +79,14 @@ export async function GET(request: NextRequest) {
           const row = item as Record<string, unknown>
           const id = value(row, 'id'), projectId = nullableValue(row, 'project_id')
           if (!id || !projectId) return []
-          return [{ id, title: value(row, 'devis_number') || 'Devis', subtitle: nullableValue(row, 'objet'), status: nullableValue(row, 'statut'), route: globalSearchRoute('quote', { id, projectId }) }]
+          return [{ id, title: value(row, 'devis_number') || 'Devis', subtitle: nullableValue(row, 'objet'), status: formatQuoteStatus(nullableValue(row, 'statut')), route: globalSearchRoute('quote', { id, projectId }) }]
         }),
       },
       {
         category: 'appointment', label: 'Rendez-vous', results: (appointments.data || []).map((item) => {
           const row = item as Record<string, unknown>
           const id = value(row, 'id')
-          return { id, title: value(row, 'title') || 'Rendez-vous', subtitle: formatSmartDateFr(nullableValue(row, 'start_time'), { timeZone: context.tenant.timezone }), status: nullableValue(row, 'status'), route: globalSearchRoute('appointment', { id }) }
+          return { id, title: value(row, 'title') || 'Rendez-vous', subtitle: formatSmartDateFr(nullableValue(row, 'start_time'), { timeZone: context.tenant.timezone }), status: formatAppointmentStatus(nullableValue(row, 'status')), route: globalSearchRoute('appointment', { id }) }
         }),
       },
     ] satisfies GlobalSearchGroup[]).filter((group) => group.results.length > 0)

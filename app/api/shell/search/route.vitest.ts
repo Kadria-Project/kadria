@@ -66,5 +66,8 @@ describe('/api/shell/search', () => {
     expect(body.groups[2].results[0]).toEqual(expect.objectContaining({ route: '/dashboard-v2/projet/p1/devis/q1' }))
     expect(body.groups[3].results[0]).toEqual(expect.objectContaining({ route: '/dashboard-v2/agenda?appointmentId=a1' }))
     expect(body.groups[3].results[0].subtitle).toMatch(/^(Aujourd’hui à 10 h 30|24 juillet 2026 à 10 h 30)$/)
+    expect(body.groups[0].results[0].status).toBe('Statut indisponible')
+    expect(body.groups[2].results[0].status).toBe('Statut indisponible')
+    expect(body.groups[3].results[0].status).toBe('Statut indisponible')
   })
 })
