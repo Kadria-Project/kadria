@@ -315,7 +315,7 @@ function AutomationsHistoryPageContent() {
   }, [filteredRuns])
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8 text-slate-900">
+    <main className="settings-history mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8 text-slate-900">
       <nav aria-label="Fil d’Ariane" className="mb-4 text-sm text-slate-500">Workspace / Paramètres / Automatisations / <span className="text-slate-700">Historique</span></nav>
       <div>
         <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
