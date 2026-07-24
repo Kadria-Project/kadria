@@ -34,6 +34,8 @@ function toCompanySettingsValues(config: ArtisanSettingsConfig): CompanySettings
 
 export function useCompanySettingsData() {
   const [role, setRole] = useState<TenantRole | null>(null)
+  const [permissionsLoading, setPermissionsLoading] = useState(true)
+  const [permissionsError, setPermissionsError] = useState<string | null>(null)
   const [teamTabVisible, setTeamTabVisible] = useState(true)
   const [config, setConfig] = useState<ArtisanSettingsConfig | null>(null)
   const [values, setValues] = useState<CompanySettingsValues>(EMPTY_VALUES)
@@ -58,10 +60,11 @@ export function useCompanySettingsData() {
 
   useEffect(() => {
     fetch('/api/team', { cache: 'no-store' }).then(async (response) => {
-      if (response.status === 401) return setTeamTabVisible(false)
+      if (response.status === 401) { setTeamTabVisible(false); setPermissionsError('Les autorisations n’ont pas pu être vérifiées. Réessayez.'); return }
       const data = await response.json().catch(() => null)
       if (data?.membership?.role) setRole(data.membership.role as TenantRole)
-    }).catch(() => {})
+      else setPermissionsError('Les autorisations n’ont pas pu être vérifiées. Réessayez.')
+    }).catch(() => { setPermissionsError('Les autorisations n’ont pas pu être vérifiées. Réessayez.') }).finally(() => setPermissionsLoading(false))
   }, [])
 
   useEffect(() => {
@@ -103,5 +106,5 @@ export function useCompanySettingsData() {
   }
 
   const removeLogo = () => { setValues((current) => ({ ...current, logoUrl: '' })); setConfig((current) => current ? { ...current, logoUrl: '' } : current) }
-  return { role, teamTabVisible, config, values, loading, error, saving, isMobile, uploading: uploadingTarget === 'company_logo', uploadError, save, onSaved, uploadLogo, removeLogo }
+  return { role, permissionsLoading, permissionsError, teamTabVisible, config, values, loading, error, saving, isMobile, uploading: uploadingTarget === 'company_logo', uploadError, save, onSaved, uploadLogo, removeLogo }
 }

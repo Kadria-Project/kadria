@@ -19,7 +19,7 @@ function CompanyForm({ values, readOnly, onSave, saving, message, children }: { 
 
 export function CompanySettingsView() {
   const company = useCompanySettingsData()
-  const readOnly = !hasPermission(company.role ?? 'viewer', 'company.update')
+  const readOnly = !company.permissionsLoading && !hasPermission(company.role ?? 'viewer', 'company.update')
   const domainSave = useCompanyDomainSave(company.values, company.onSaved)
   const save = (domain: CompanySettingsDomain) => (draft: Partial<Values>) => {
     const fields = { identity: ['companyName', 'raisonSociale', 'websiteUrl', 'googleReviewUrl'], contact: ['phone', 'notificationEmail', 'adressePro', 'cpPro', 'villePro'], branding: ['logoUrl'], legal: ['formeJuridique', 'siret', 'tvaNumber', 'tvaAssujetti', 'assureur', 'numAssurance', 'assuranceNonRequise', 'devisMentionLegale'] } as const
@@ -28,6 +28,8 @@ export function CompanySettingsView() {
   }
   if (company.loading) return <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Chargement des informations de l’entreprise…</div>
   if (company.error) return <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{company.error}</p>
+  if (company.permissionsLoading) return <div role="status" className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Vérification des droits…</div>
+  if (company.permissionsError) return <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{company.permissionsError}</p>
   const panel = (domain: CompanySettingsDomain, title: string, description: string, content: Parameters<typeof CompanyForm>[0]['children']) => <SettingsPanel title={title} description={description} status={readOnly ? 'read-only' : companyPanelStatus(domain, company.values)}><CompanyForm values={company.values} readOnly={readOnly} onSave={save(domain)} saving={domainSave.saving === domain} message={domainSave.messages[domain]}>{content}</CompanyForm></SettingsPanel>
   return <div className="space-y-4">{readOnly && <ReadOnlyNotice message="Ces informations sont en lecture seule pour votre rôle." />}
     {panel('identity', 'Identité de l’entreprise', 'Ces informations permettent à Kadria d’identifier votre entreprise auprès de vos clients.', (set, d) => <div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-medium text-slate-700">Nom commercial<input className={input} disabled={readOnly} value={d.companyName} onChange={e => set('companyName', e.target.value)} /></label><label className="text-sm font-medium text-slate-700">Raison sociale (si différente)<input className={input} disabled={readOnly} value={d.raisonSociale} onChange={e => set('raisonSociale', e.target.value)} /></label><label className="text-sm font-medium text-slate-700">Site internet<input className={input} disabled={readOnly} value={d.websiteUrl} onChange={e => set('websiteUrl', e.target.value)} /></label><label className="text-sm font-medium text-slate-700">Lien d’avis Google<input className={input} disabled={readOnly} value={d.googleReviewUrl} onChange={e => set('googleReviewUrl', e.target.value)} /></label></div>)}
