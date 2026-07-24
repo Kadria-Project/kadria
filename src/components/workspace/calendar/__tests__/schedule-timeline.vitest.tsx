@@ -33,3 +33,12 @@ test('opens contextual creation from a keyboard-focused free planning area', () 
   expect(calls.onCreate.mock.calls[0][1]).toBeUndefined()
   expect(calls.onCreate.mock.calls[0][2]).toBeDefined()
 })
+
+test('shows a full-width contextual creation band over a free slot', () => {
+  renderTimeline([appointment('2026-07-21')])
+  const planningArea = screen.getByLabelText(/planning du mardi 21 juillet/i)
+  fireEvent.mouseMove(planningArea, { clientY: 160 })
+  const action = screen.getByRole('button', { name: /ajouter un rendez-vous le mardi 21/i })
+  expect(action).toHaveTextContent('Ajouter un rendez-vous')
+  expect(action.className).toContain('inset-x-2')
+})
