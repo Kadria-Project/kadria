@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TABLES } from '@/src/lib/airtable'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
+import { formatSmartDateFr } from '@/src/lib/date-format'
 import {
   cleanGlobalSearchQuery,
   escapePostgrestLike,
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
         category: 'appointment', label: 'Rendez-vous', results: (appointments.data || []).map((item) => {
           const row = item as Record<string, unknown>
           const id = value(row, 'id')
-          return { id, title: value(row, 'title') || 'Rendez-vous', subtitle: nullableValue(row, 'start_time'), status: nullableValue(row, 'status'), route: globalSearchRoute('appointment', { id }) }
+          return { id, title: value(row, 'title') || 'Rendez-vous', subtitle: formatSmartDateFr(nullableValue(row, 'start_time'), { timeZone: context.tenant.timezone }), status: nullableValue(row, 'status'), route: globalSearchRoute('appointment', { id }) }
         }),
       },
     ] satisfies GlobalSearchGroup[]).filter((group) => group.results.length > 0)

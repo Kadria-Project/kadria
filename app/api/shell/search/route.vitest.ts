@@ -41,7 +41,7 @@ describe('/api/shell/search', () => {
   })
 
   it('does not query below the minimum length', async () => {
-    mocks.context.mockResolvedValue({ tenantId: 'tenant-a' })
+    mocks.context.mockResolvedValue({ tenantId: 'tenant-a', tenant: { timezone: 'Europe/Paris' } })
     const response = await GET(new NextRequest('http://localhost/api/shell/search?q=a'))
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ success: true, groups: [] })
@@ -49,12 +49,12 @@ describe('/api/shell/search', () => {
   })
 
   it('scopes every category query to the current tenant and returns compact routes', async () => {
-    mocks.context.mockResolvedValue({ tenantId: 'tenant-a' })
+    mocks.context.mockResolvedValue({ tenantId: 'tenant-a', tenant: { timezone: 'Europe/Paris' } })
     mocks.from
       .mockReturnValueOnce(builder([{ id: 'p1', project_title: 'Cuisine', status: 'Nouveau' }]))
       .mockReturnValueOnce(builder([{ id: 'c1', first_name: 'Ada', last_name: 'Lovelace', status: 'customer' }]))
       .mockReturnValueOnce(builder([{ id: 'q1', project_id: 'p1', devis_number: 'DEV-1', statut: 'Brouillon' }]))
-      .mockReturnValueOnce(builder([{ id: 'a1', title: 'Visite', status: 'planned' }]))
+      .mockReturnValueOnce(builder([{ id: 'a1', title: 'Visite', start_time: '2026-07-24T08:30:00+00:00', status: 'planned' }]))
 
     const response = await GET(new NextRequest('http://localhost/api/shell/search?q=cu'))
     const body = await response.json()
@@ -65,5 +65,6 @@ describe('/api/shell/search', () => {
     expect(body.groups).toHaveLength(4)
     expect(body.groups[2].results[0]).toEqual(expect.objectContaining({ route: '/dashboard-v2/projet/p1/devis/q1' }))
     expect(body.groups[3].results[0]).toEqual(expect.objectContaining({ route: '/dashboard-v2/agenda?appointmentId=a1' }))
+    expect(body.groups[3].results[0].subtitle).toMatch(/^(Aujourd’hui à 10 h 30|24 juillet 2026 à 10 h 30)$/)
   })
 })
