@@ -376,7 +376,7 @@ function buildEntityHref(entityType: BusinessAutomationRunRecord['entityType'], 
     }
     return '/dashboard-v2?mode=calendar'
   }
-  return '/parametres'
+  return '/parametres/entreprise'
 }
 
 function buildEntityLabel(run: BusinessAutomationRunRecord, payload: Record<string, unknown>, projectLabels: Map<string, string>, appointmentLabels: Map<string, string>): string {

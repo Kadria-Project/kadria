@@ -43,11 +43,11 @@ export default function KadriaTopbar() {
                 Créer
               </button>
               <NotificationBell variant="desktop" />
-              <Link href="/parametres" className="hidden items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 2xl:flex">
+              <Link href="/parametres/entreprise" className="hidden items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 2xl:flex">
                 Mon entreprise
                 <ChevronDown className="h-4 w-4 text-slate-400" />
               </Link>
-              <Link href="/parametres" aria-label="Mon profil" className="grid h-10 w-10 place-items-center rounded-full bg-[#0b2232] text-sm font-semibold text-white transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">
+              <Link href="/parametres/entreprise" aria-label="Mon profil" className="grid h-10 w-10 place-items-center rounded-full bg-[#0b2232] text-sm font-semibold text-white transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">
                 A
               </Link>
               <button

@@ -46,6 +46,6 @@ test('/parametres redirects on the server before a legacy page can render', asyn
   const directory = path.dirname(fileURLToPath(import.meta.url))
   const source = await readFile(path.resolve(directory, '../../../../app/parametres/page.tsx'), 'utf8')
 
-  assert.match(source, /redirect\('\/parametres\/entreprise'\)/)
+  assert.match(source, /resolveLegacySettingsDestination\('\/parametres'/)
   assert.doesNotMatch(source, /useEffect/)
 })

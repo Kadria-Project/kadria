@@ -100,7 +100,7 @@ function buildDeterministicReply(userQuestion: string, context: KadriaAssistantC
 
     return {
       answer: "Oui, Kadria peut vous aider a envoyer une demande d'avis Google depuis un dossier, mais il faut d'abord renseigner votre URL avis Google dans les parametres.",
-      navigationActions: [{ label: "Configurer l'URL avis Google", href: '/parametres?section=entreprise' }],
+      navigationActions: [{ label: "Configurer l'URL avis Google", href: '/parametres/entreprise' }],
     }
   }
 
@@ -124,7 +124,7 @@ function buildDeterministicReply(userQuestion: string, context: KadriaAssistantC
   if (/configur|parametr|url avis google/.test(text) && context.progressionCenter.percent < 100) {
     return {
       answer: `Votre configuration actuelle est a ${context.progressionCenter.percent} %. Je peux vous orienter vers le prochain reglage utile sans rien modifier a votre place.`,
-      navigationActions: [{ label: 'Ouvrir Parametres', href: '/parametres' }],
+      navigationActions: [{ label: 'Ouvrir Parametres', href: '/parametres/entreprise' }],
     }
   }
 

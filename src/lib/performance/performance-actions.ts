@@ -724,5 +724,5 @@ export function getMonthlyGoalProgress(goal: MonthlyGoal): MonthlyGoalProgress {
  * elle existe (`/parametres`), jamais un lien mort.
  */
 export function getMonthlyGoalsSummary(): MonthlyGoalsSummary {
-  return { configured: false, goals: [], configureDestination: '/parametres' }
+  return { configured: false, goals: [], configureDestination: '/parametres/entreprise' }
 }

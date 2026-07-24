@@ -1150,7 +1150,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push('/parametres')}
+                onClick={() => router.push('/parametres/entreprise')}
                 style={{
                   background: 'transparent',
                   border: '1px solid var(--border)',

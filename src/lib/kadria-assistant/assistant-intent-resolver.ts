@@ -38,7 +38,7 @@ function resolveNavigation(message: string): Extract<AssistantIntentResolution, 
     [/\b(ouvre|va sur|montre).*agenda/, '/dashboard-v2/agenda', 'Ouvrir l’agenda'],
     [/\b(ouvre|va sur|montre).*(suivi|dossiers)/, '/dashboard-v2/suivi', 'Ouvrir le suivi'],
     [/\b(ouvre|va sur|montre).*performance/, '/dashboard-v2/performance', 'Ouvrir Performance'],
-    [/\b(ouvre|va sur|montre).*parametr/, '/parametres', 'Ouvrir les paramètres'],
+    [/\b(ouvre|va sur|montre).*parametr/, '/parametres/entreprise', 'Ouvrir les paramètres'],
     [/\b(ouvre|va sur|montre).*devis/, '/dashboard-v2', 'Ouvrir les devis'],
   ] as const
   const match = destinations.find(([pattern]) => pattern.test(text))

@@ -229,7 +229,7 @@ export async function GET() {
         eligible: false,
         googleReviewConfigured: false,
         primaryActionLabel: 'Configurer',
-        primaryActionHref: '/parametres?section=entreprise',
+        primaryActionHref: '/parametres/entreprise',
       }))
     } else if (progress.percent < 100 && todoStep) {
       actions.push(withIntervention({
@@ -245,7 +245,7 @@ export async function GET() {
         eligible: true,
         googleReviewConfigured: true,
         primaryActionLabel: 'Completer',
-        primaryActionHref: todoStep.href || '/parametres',
+        primaryActionHref: todoStep.href || '/parametres/entreprise',
       }))
     }
 

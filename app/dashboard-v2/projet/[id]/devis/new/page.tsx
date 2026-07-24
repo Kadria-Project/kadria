@@ -673,7 +673,7 @@ function NewDevis() {
                 ))}
               </ul>
             )}
-            <a href="/parametres" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '14px' }}>
+            <a href="/parametres/entreprise" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '14px' }}>
               Compléter mes informations →
             </a>
           </div>

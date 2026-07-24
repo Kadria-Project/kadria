@@ -44,11 +44,11 @@ export function getStripeConnectStatus(account: Stripe.Account | null | undefine
 }
 
 export function getStripeConnectReturnUrl() {
-  return `${getBaseUrl()}/parametres?section=catalogue&stripe_connect=return`
+  return `${getBaseUrl()}/parametres/activite?stripe_connect=return`
 }
 
 export function getStripeConnectRefreshUrl() {
-  return `${getBaseUrl()}/parametres?section=catalogue&stripe_connect=refresh`
+  return `${getBaseUrl()}/parametres/activite?stripe_connect=refresh`
 }
 
 export async function getExistingStripeConnectAccount(accountId: string) {

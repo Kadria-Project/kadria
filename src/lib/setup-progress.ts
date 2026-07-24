@@ -103,7 +103,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: entrepriseDone ? 'done' : 'todo',
       category: 'essential',
       ctaLabel: 'Completer mon entreprise',
-      href: '/parametres?section=entreprise',
+      href: '/parametres/entreprise',
       priority: 1,
     },
     {
@@ -113,7 +113,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: hasText(businessProfile?.primaryTrade) ? 'done' : 'todo',
       category: 'essential',
       ctaLabel: 'Renseigner mon metier',
-      href: '/parametres/profil-metier',
+      href: '/parametres/activite',
       priority: 2,
     },
     {
@@ -123,7 +123,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: hasText(businessProfile?.baseCity) && hasValue(businessProfile?.interventionRadiusKm) ? 'done' : 'todo',
       category: 'essential',
       ctaLabel: 'Definir ma zone',
-      href: '/parametres?section=entreprise',
+      href: '/parametres/entreprise',
       priority: 4,
     },
     {
@@ -133,7 +133,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: hasValue(businessProfile?.hourlyRateHt) || hasValue(businessProfile?.defaultVatRate) ? 'done' : 'todo',
       category: 'essential',
       ctaLabel: 'Renseigner mes tarifs',
-      href: '/parametres/profil-metier',
+      href: '/parametres/activite',
       priority: 5,
     },
     {
@@ -143,7 +143,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: serviceProfiles.length > 0 || serviceCatalogCount > 0 ? 'done' : 'todo',
       category: 'essential',
       ctaLabel: 'Configurer mes prestations',
-      href: '/parametres/profil-metier',
+      href: '/parametres/activite',
       priority: 3,
     },
     {
@@ -153,7 +153,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: hasText(artisanConfig?.devisConditionsPaiement) ? 'done' : 'todo',
       category: 'essential',
       ctaLabel: 'Configurer mes devis',
-      href: '/parametres?section=catalogue',
+      href: '/parametres/activite',
       priority: 6,
     },
     {
@@ -173,7 +173,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: (businessProfile?.workingDays || []).length > 0 && hasText(businessProfile?.workStartTime) && hasText(businessProfile?.workEndTime) ? 'done' : 'todo',
       category: 'recommended',
       ctaLabel: 'Renseigner mes horaires',
-      href: '/parametres/profil-metier',
+      href: '/parametres/activite',
       priority: 10,
     },
     {
@@ -183,7 +183,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: hasText(artisanConfig?.googleReviewUrl) ? 'done' : 'todo',
       category: 'recommended',
       ctaLabel: 'Ajouter le lien',
-      href: '/parametres?section=entreprise',
+      href: '/parametres/entreprise',
       priority: 11,
     },
     {
@@ -193,7 +193,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: artisanConfig?.depositEnabled ? 'done' : 'todo',
       category: 'recommended',
       ctaLabel: 'Activer',
-      href: '/parametres?section=catalogue',
+      href: '/parametres/activite',
       priority: 12,
     },
     {
@@ -203,7 +203,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: artisanConfig?.stripeConnectStatus === 'active' ? 'done' : 'todo',
       category: 'recommended',
       ctaLabel: 'Connecter',
-      href: '/parametres?section=catalogue',
+      href: '/parametres/activite',
       priority: 13,
     },
     {
@@ -213,7 +213,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       status: hasText(artisanConfig?.artisanId) ? 'done' : 'todo',
       category: 'recommended',
       ctaLabel: 'Ouvrir',
-      href: '/parametres?section=widget',
+      href: '/parametres/assistants',
       priority: 8,
     },
   ]
