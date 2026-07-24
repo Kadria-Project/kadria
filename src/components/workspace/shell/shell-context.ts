@@ -101,6 +101,10 @@ export function getShellContextFromPathname(pathname?: string | null): ShellCont
   } else if (path === '/dashboard-v2/suivi') {
     pageType = 'tracking'
     route = '/dashboard-v2/suivi'
+  } else if (path === '/dashboard-v2/suivi/projets') {
+    pageType = 'tracking'
+    route = '/dashboard-v2/suivi/projets'
+    section = 'projects'
   } else if (path === '/dashboard-v2/agenda') {
     pageType = 'calendar'
     route = '/dashboard-v2/agenda'

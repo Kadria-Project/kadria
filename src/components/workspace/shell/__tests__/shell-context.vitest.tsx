@@ -27,6 +27,7 @@ describe('shell route context', () => {
     ['/dashboard-v2', 'dashboard', '/dashboard-v2'],
     ['/dashboard-v2/a-faire', 'tasks', '/dashboard-v2/a-faire'],
     ['/dashboard-v2/suivi', 'tracking', '/dashboard-v2/suivi'],
+    ['/dashboard-v2/suivi/projets', 'tracking', '/dashboard-v2/suivi/projets'],
     ['/dashboard-v2/agenda', 'calendar', '/dashboard-v2/agenda'],
     ['/dashboard-v2/clients', 'clients', '/dashboard-v2/clients'],
     ['/dashboard-v2/performance', 'performance', '/dashboard-v2/performance'],

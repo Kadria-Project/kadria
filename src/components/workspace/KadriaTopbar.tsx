@@ -12,8 +12,10 @@ export default function KadriaTopbar() {
     ? { eyebrow: 'Workspace / Projet', title: shellContext.entity?.label || 'Fiche projet' }
     : shellContext.pageType === 'settings'
       ? { eyebrow: 'Workspace / Paramètres', title: 'Paramètres' }
-      : shellContext.pageType === 'tracking'
-    ? { eyebrow: 'Workspace / Suivi', title: 'Suivi commercial' }
+    : shellContext.pageType === 'tracking'
+    ? shellContext.section === 'projects'
+      ? { eyebrow: 'Suivi / Tous les projets', title: 'Tous les projets' }
+      : { eyebrow: 'Workspace / Suivi', title: 'Suivi commercial' }
     : shellContext.pageType === 'tasks'
       ? { eyebrow: 'Workspace / À faire', title: 'À faire' }
       : shellContext.pageType === 'calendar'

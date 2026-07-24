@@ -15,3 +15,8 @@ test('clients breadcrumb no longer depends on Suivi', async () => {
   expect(source).toContain("{ eyebrow: 'Workspace / Clients', title: 'Clients' }")
   expect(source).not.toContain("{ eyebrow: 'Suivi / Clients', title: 'Clients' }")
 })
+
+test('project list keeps the Suivi breadcrumb', async () => {
+  const source = await readFile(join(resolve(process.cwd()), 'src/components/workspace/KadriaTopbar.tsx'), 'utf8')
+  expect(source).toContain("{ eyebrow: 'Suivi / Tous les projets', title: 'Tous les projets' }")
+})
