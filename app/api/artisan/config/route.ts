@@ -122,6 +122,9 @@ export async function GET() {
       success: true,
       config: config && {
         ...config,
+        // Identifiant public stable du tenant : le widget ne doit jamais le
+        // déduire depuis un champ optionnel de configuration.
+        artisanId: session.artisanId,
         firstName: session.firstName || user?.firstName || '',
         lastName: session.lastName || user?.lastName || '',
         email: session.email || user?.email || '',
