@@ -53,7 +53,7 @@ export default function CalendarWorkspace() {
   const requestedAppointmentId = searchParams.get('appointmentId');
   const [mode, setMode] = useState<CalendarMode>('kadria');
   const [planningMode, setPlanningMode] = useState<PlanningMode>('personal');
-  const [view, setView] = useState<CalendarView>('semaine');
+  const [view, setView] = useState<CalendarView>('jour');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [appointments, setAppointments] = useState<RawKadriaAppointment[]>([]);
   const [googleEvents, setGoogleEvents] = useState<RawGoogleEvent[]>([]);

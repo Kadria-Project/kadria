@@ -22,8 +22,10 @@ import {
   durationMinutes,
   eventDate,
   extendCalendarTimeRange,
+  formatSelectedAgendaDate,
   formatTime,
   isSameDay,
+  isSelectedDateToday,
   minutesSinceStartOfDay,
   snapMinutes,
   startOfWeekMonday,
@@ -198,6 +200,9 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
     () => Array.from(overlapLayouts.values()).flatMap((layout) => layout.groups).filter((group) => group.columnCount > 1).length,
     [overlapLayouts],
   );
+  const selectedDateIsToday = isSelectedDateToday(selectedDate, now);
+  const selectedDateLabel = formatSelectedAgendaDate(selectedDate, now);
+  const periodLabel = view === 'jour' ? 'Jour' : 'Semaine';
 
   const scrollToNow = () => {
     const target = Math.max(0, ((minutesSinceStartOfDay(now) - range.startMinutes) / 60) * CALENDAR_HOUR_HEIGHT - 90);
@@ -281,7 +286,7 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
   return (
     <section id="workspace-section-calendar" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)] sm:p-5 lg:min-h-[70vh]">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2"><p className="mr-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500"><CalendarDays className="size-4 text-emerald-600" />Planning</p><button type="button" onClick={onPrevious} aria-label="Période précédente" className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronLeft className="size-4" /></button><button type="button" onClick={onToday} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Aujourd’hui</button><button type="button" onClick={handleNow} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Maintenant</button><button type="button" onClick={onNext} aria-label="Période suivante" className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronRight className="size-4" /></button></div>
+        <div className="flex flex-wrap items-center gap-2"><p className="mr-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500"><CalendarDays className="size-4 text-emerald-600" />Planning</p><button type="button" onClick={onPrevious} aria-label={`${periodLabel} précédent`} className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronLeft className="size-4" /></button><button type="button" onClick={onToday} aria-label="Revenir à aujourd’hui" disabled={selectedDateIsToday} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-default disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-400">Aujourd’hui</button><p aria-live="polite" className="min-w-[13rem] text-center text-sm font-semibold text-slate-800">{selectedDateLabel}</p><button type="button" onClick={onNext} aria-label={`${periodLabel} suivant`} className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronRight className="size-4" /></button>{view === 'jour' && selectedDateIsToday ? <button type="button" onClick={handleNow} aria-label="Aller à l’heure actuelle" className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Maintenant</button> : null}</div>
         <div className="flex items-center gap-2"><div className="flex rounded-lg border border-slate-200 p-0.5"><button type="button" onClick={() => onViewChange('jour')} className={['rounded-md px-3 py-1.5 text-xs font-semibold', view === 'jour' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'].join(' ')}>Jour</button><button type="button" onClick={() => onViewChange('semaine')} className={['rounded-md px-3 py-1.5 text-xs font-semibold', view === 'semaine' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'].join(' ')}>Semaine</button></div></div>
       </div>
       {conflictGroupCount > 0 ? <div className="mt-3 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"><span className="inline-flex items-center gap-1.5 font-semibold"><AlertTriangle className="size-3.5" aria-hidden="true" />{conflictGroupCount} conflit{conflictGroupCount > 1 ? 's' : ''} détecté{conflictGroupCount > 1 ? 's' : ''} sur cette période.</span><button type="button" onClick={() => setConflictsOnly((current) => !current)} className="rounded-md px-2 py-1 font-semibold text-amber-800 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600">{conflictsOnly ? 'Voir tous les rendez-vous' : 'Voir les conflits'}</button></div> : null}

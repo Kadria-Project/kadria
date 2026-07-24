@@ -208,6 +208,21 @@ export function isSameDay(left: Date, right: Date) {
   return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
 }
 
+export function isSelectedDateToday(selectedDate: Date, now = new Date()) {
+  return isSameDay(selectedDate, now);
+}
+
+export function formatSelectedAgendaDate(selectedDate: Date, now = new Date()) {
+  const formatted = selectedDate.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const label = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  return isSelectedDateToday(selectedDate, now) ? `Aujourd’hui · ${label}` : label;
+}
+
 export function formatTime(value: string | null) {
   if (!value) return null;
   const date = new Date(value);

@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Clock3, Plus, UsersRound } from 'lucide-reac
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event';
 import { getAppointmentStatusPresentation } from '@/src/lib/calendar/appointment-status-presentation';
 import type { CalendarView, TeamPlanningMember } from './calendar-workspace-types';
-import { CALENDAR_HOUR_HEIGHT, buildAppointmentOverlapGroups, calculateCalendarTimeRange, eventDate, formatDuration, formatTime, isSameDay, minutesSinceStartOfDay, snapMinutes, startOfWeekMonday } from './calendar-workspace-utils';
+import { CALENDAR_HOUR_HEIGHT, buildAppointmentOverlapGroups, calculateCalendarTimeRange, eventDate, formatDuration, formatSelectedAgendaDate, formatTime, isSameDay, isSelectedDateToday, minutesSinceStartOfDay, snapMinutes, startOfWeekMonday } from './calendar-workspace-utils';
 
 type TeamScheduleTimelineProps = {
   view: CalendarView;
@@ -102,6 +102,9 @@ export default function TeamScheduleTimeline({ view, selectedDate, events, membe
   const hours = useMemo(() => Array.from({ length: Math.ceil((range.endMinutes - range.startMinutes) / 60) }, (_, index) => Math.floor(range.startMinutes / 60) + index), [range]);
   const gridHeight = ((range.endMinutes - range.startMinutes) / 60) * CALENDAR_HOUR_HEIGHT;
   const showUnassigned = timed.some((event) => !event.assignedUserId);
+  const selectedDateIsToday = isSelectedDateToday(selectedDate, now);
+  const selectedDateLabel = formatSelectedAgendaDate(selectedDate, now);
+  const periodLabel = view === 'jour' ? 'Jour' : 'Semaine';
   const columns = useMemo(() => [
     ...visibleMembers.map((member) => ({ id: member.userId, name: member.isMe ? 'Moi' : member.name, member })),
     ...(showUnassigned ? [{ id: UNASSIGNED_ID, name: 'Sans collaborateur', member: null }] : []),
@@ -127,10 +130,11 @@ export default function TeamScheduleTimeline({ view, selectedDate, events, membe
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="mr-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500"><UsersRound className="size-4 text-emerald-600" />Planning d’équipe</p>
-          <button type="button" onClick={onPrevious} aria-label="Période précédente" className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronLeft className="size-4" /></button>
-          <button type="button" onClick={onToday} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Aujourd’hui</button>
-          <button type="button" onClick={handleNow} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Maintenant</button>
-          <button type="button" onClick={onNext} aria-label="Période suivante" className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronRight className="size-4" /></button>
+          <button type="button" onClick={onPrevious} aria-label={`${periodLabel} précédent`} className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronLeft className="size-4" /></button>
+          <button type="button" onClick={onToday} aria-label="Revenir à aujourd’hui" disabled={selectedDateIsToday} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-default disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-400">Aujourd’hui</button>
+          <p aria-live="polite" className="min-w-[13rem] text-center text-sm font-semibold text-slate-800">{selectedDateLabel}</p>
+          <button type="button" onClick={onNext} aria-label={`${periodLabel} suivant`} className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronRight className="size-4" /></button>
+          {view === 'jour' && selectedDateIsToday ? <button type="button" onClick={handleNow} aria-label="Aller à l’heure actuelle" className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Maintenant</button> : null}
         </div>
         <div className="flex items-center gap-2"><div className="flex rounded-lg border border-slate-200 p-0.5"><button type="button" onClick={() => onViewChange('jour')} className={['rounded-md px-3 py-1.5 text-xs font-semibold', view === 'jour' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'].join(' ')}>Jour</button><button type="button" onClick={() => onViewChange('semaine')} className={['rounded-md px-3 py-1.5 text-xs font-semibold', view === 'semaine' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'].join(' ')}>Semaine</button></div></div>
       </div>
