@@ -17,11 +17,11 @@ import CalendarBriefing from './CalendarBriefing';
 import AgendaSituationsPanel from './AgendaSituationsPanel';
 import AgendaDayInsights from './AgendaDayInsights';
 import AgendaFiltersPopover from './AgendaFiltersPopover';
-import { deriveAgendaDaySummary } from './agenda-day-summary';
+import { deriveAgendaDaySummary, getSelectedDayEvents } from './agenda-day-summary';
 import ScheduleTimeline from './ScheduleTimeline';
 import TeamScheduleTimeline from './TeamScheduleTimeline';
 import type { CalendarView, PlanningInsights, TeamPlanningMember, TeamPlanningPermissions } from './calendar-workspace-types';
-import { addDays, eventDate, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
+import { addDays, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
 import { deriveDayReadiness, deriveNextIntervention, deriveScheduleSituations, type ScheduleSituation } from '@/src/lib/calendar/schedule-situations';
 import { consumeAppointmentQuickCreateRoute, isAppointmentQuickCreate } from './quick-create-command';
 
@@ -222,28 +222,13 @@ export default function CalendarWorkspace() {
     if (collaboratorFilter === 'me') return event.isAssignedToCurrentUser;
     return collaboratorFilter === 'all' || event.assignedUserId === collaboratorFilter;
   }), [allEvents, collaboratorFilter, confirmationFilter]);
-  const todayEvents = useMemo(() => events.filter((event) => {
-    const date = eventDate(event);
-    return date ? isSameDay(date, new Date()) : false;
-  }), [events]);
+  const selectedDayEvents = useMemo(() => getSelectedDayEvents(events, selectedDate), [events, selectedDate]);
   const situations = useMemo(() => deriveScheduleSituations(events, insights), [events, insights]);
-  const dayReadiness = useMemo(() => deriveDayReadiness({ loading, error, events, situations, insightsVerified: insights !== null }), [error, events, insights, loading, situations]);
-  const nextAppointment = useMemo(() => deriveNextIntervention(events, new Date(currentTime)), [currentTime, events]);
-  const dayMetrics = useMemo(() => {
-    const timedEvents = todayEvents.filter((event) => event.start && event.end);
-    const travelMinutes = appointments.filter((appointment) => appointment.eventType === 'travel' && appointment.start && appointment.end && isSameDay(new Date(appointment.start), new Date())).reduce((total, appointment) => total + Math.max(0, Math.round((new Date(appointment.end!).getTime() - new Date(appointment.start!).getTime()) / 60_000)), 0);
-    const latestEnd = timedEvents.reduce<Date | null>((latest, event) => {
-      const end = new Date(event.end!);
-      return !latest || end > latest ? end : latest;
-    }, null);
-    return {
-      confirmedCount: todayEvents.filter((event) => event.confirmation?.status === 'confirmed').length,
-      travelMinutes,
-      estimatedEnd: latestEnd ? latestEnd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null,
-    };
-  }, [appointments, todayEvents]);
   const eventTypesByAppointmentId = useMemo(() => Object.fromEntries(appointments.map((appointment) => [appointment.id, appointment.eventType])), [appointments]);
-  const agendaDaySummary = useMemo(() => deriveAgendaDaySummary({ events, selectedDate, eventTypesByAppointmentId, workStartTime: workHours.start, workEndTime: workHours.end }), [eventTypesByAppointmentId, events, selectedDate, workHours.end, workHours.start]);
+  const agendaDaySummary = useMemo(() => deriveAgendaDaySummary({ events: selectedDayEvents, selectedDate, eventTypesByAppointmentId, workStartTime: workHours.start, workEndTime: workHours.end }), [eventTypesByAppointmentId, selectedDate, selectedDayEvents, workHours.end, workHours.start]);
+  const dayReadiness = useMemo(() => deriveDayReadiness({ loading, error, events: selectedDayEvents, situations, insightsVerified: insights !== null }), [error, insights, loading, selectedDayEvents, situations]);
+  const nextAppointment = useMemo(() => deriveNextIntervention(selectedDayEvents, isSameDay(selectedDate, new Date()) ? new Date(currentTime) : startOfDay(selectedDate)), [currentTime, selectedDate, selectedDayEvents]);
+  const selectedDayConfirmedCount = useMemo(() => selectedDayEvents.filter((event) => event.confirmation?.status === 'confirmed').length, [selectedDayEvents]);
   const endIsValid = Boolean(form.start && form.end && new Date(form.end).getTime() > new Date(form.start).getTime());
   const teamPlanningAvailable = mode === 'kadria' && Boolean(teamPermissions?.canManageTeamPlanning) && teamMembers.length > 1;
 
@@ -595,7 +580,7 @@ export default function CalendarWorkspace() {
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-4 pb-6">
-      <CalendarBriefing readiness={dayReadiness} appointmentCount={todayEvents.length} {...dayMetrics} />
+      <CalendarBriefing readiness={dayReadiness} appointmentCount={agendaDaySummary.appointmentCount} confirmedCount={selectedDayConfirmedCount} travelMinutes={agendaDaySummary.travelMinutes} estimatedEnd={agendaDaySummary.estimatedEnd} selectedDate={selectedDate} />
       <AgendaSituationsPanel situations={situations} onAction={actOnSituation} />
       {error && <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}

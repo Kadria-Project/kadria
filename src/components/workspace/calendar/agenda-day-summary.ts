@@ -26,6 +26,13 @@ const toMinutes = (value: string | null | undefined) => {
 };
 const timeLabel = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 
+export function getSelectedDayEvents(events: NormalizedCalendarEvent[], selectedDate: Date) {
+  return events.filter((event) => {
+    const date = eventDate(event);
+    return Boolean(date && isSameDay(date, selectedDate) && isActive(event) && !event.allDay);
+  }).sort((left, right) => new Date(left.start || 0).getTime() - new Date(right.start || 0).getTime());
+}
+
 export function formatAgendaDuration(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
@@ -33,10 +40,7 @@ export function formatAgendaDuration(minutes: number) {
 }
 
 export function deriveAgendaDaySummary({ events, selectedDate, eventTypesByAppointmentId, workStartTime, workEndTime }: { events: NormalizedCalendarEvent[]; selectedDate: Date; eventTypesByAppointmentId: EventTypeByAppointmentId; workStartTime: string | null; workEndTime: string | null }): AgendaDaySummary {
-  const today = events.filter((event) => {
-    const date = eventDate(event);
-    return date && isSameDay(date, selectedDate) && isActive(event) && !event.allDay;
-  }).sort((left, right) => new Date(left.start || 0).getTime() - new Date(right.start || 0).getTime());
+  const today = getSelectedDayEvents(events, selectedDate);
   const appointments = today.filter((event) => eventTypesByAppointmentId[event.rawAppointmentId || ''] !== 'travel');
   const travel = today.filter((event) => eventTypesByAppointmentId[event.rawAppointmentId || ''] === 'travel');
   const dated = today.filter((event) => event.start && event.end && new Date(event.end).getTime() > new Date(event.start).getTime());

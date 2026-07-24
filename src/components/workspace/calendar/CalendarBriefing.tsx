@@ -5,8 +5,9 @@ type CalendarBriefingProps = {
   readiness: DayReadiness;
   appointmentCount: number;
   confirmedCount: number;
-  travelMinutes: number;
+  travelMinutes: number | null;
   estimatedEnd: string | null;
+  selectedDate: Date;
 };
 
 function formatDuration(minutes: number) {
@@ -16,12 +17,13 @@ function formatDuration(minutes: number) {
   return hours ? `${hours}h${remainingMinutes ? String(remainingMinutes).padStart(2, '0') : ''}` : `${remainingMinutes} min`;
 }
 
-export default function CalendarBriefing({ readiness, appointmentCount, confirmedCount, travelMinutes, estimatedEnd }: CalendarBriefingProps) {
+export default function CalendarBriefing({ readiness, appointmentCount, confirmedCount, travelMinutes, estimatedEnd, selectedDate }: CalendarBriefingProps) {
+  const isToday = selectedDate.toDateString() === new Date().toDateString();
   const metrics = [
-    { icon: CalendarCheck2, label: 'rendez-vous aujourd’hui', value: appointmentCount },
+    { icon: CalendarCheck2, label: isToday ? 'rendez-vous aujourd’hui' : 'rendez-vous planifiés', value: appointmentCount },
     { icon: Clock3, label: 'confirmé' + (confirmedCount > 1 ? 's' : ''), value: confirmedCount },
-    { icon: CarFront, label: 'trajet prévu', value: formatDuration(travelMinutes) },
-    { icon: Route, label: 'fin estimée', value: estimatedEnd || '—' },
+    ...(travelMinutes !== null ? [{ icon: CarFront, label: 'trajet prévu', value: formatDuration(travelMinutes) }] : []),
+    ...(estimatedEnd ? [{ icon: Route, label: 'fin estimée', value: estimatedEnd }] : []),
   ];
 
   return (
@@ -31,9 +33,9 @@ export default function CalendarBriefing({ readiness, appointmentCount, confirme
           <p className="text-lg font-semibold tracking-tight text-slate-950">Bonjour</p>
           <p className="mt-0.5 text-sm text-slate-600">Voici l’essentiel de votre journée.</p>
         </div>
-        <div className="rounded-xl bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-900">
+        {appointmentCount > 0 && readiness.state !== 'ready' && readiness.state !== 'empty' ? <div className="rounded-xl bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-900">
           <span className="font-semibold text-emerald-800">Conseil du jour :</span> {readiness.detail}
-        </div>
+        </div> : null}
       </div>
       <div className="mt-4 grid grid-cols-2 divide-x divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 sm:grid-cols-4 sm:divide-y-0">
         {metrics.map(({ icon: Icon, label, value }) => <div key={label} className="flex items-center gap-2.5 px-3 py-3 sm:px-4"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><Icon className="size-4" aria-hidden="true" /></span><div><p className="text-sm font-semibold text-slate-950">{value}</p><p className="text-[11px] leading-4 text-slate-500">{label}</p></div></div>)}

@@ -33,3 +33,23 @@ test('does not calculate availability or end time from incomplete durations', ()
   expect(result.availableMinutes).toBeNull();
   expect(result.estimatedEnd).toBeNull();
 });
+
+test('uses the selected day as the single source for counts, availability and itinerary', () => {
+  const result = summary([
+    event('previous', '2026-07-22T08:00:00', '2026-07-22T18:00:00'),
+    event('one', '2026-07-23T09:00:00', '2026-07-23T10:00:00'),
+    event('two', '2026-07-23T12:00:00', '2026-07-23T13:00:00', '0 Test Avenue, Rouen'),
+  ]);
+  expect(result.appointmentCount).toBe(2);
+  expect(result.routeStops?.map((stop) => stop.id)).toEqual(['one', 'two']);
+  expect(result.availableSlots?.map((slot) => `${slot.start}-${slot.end}`)).toEqual(['08:00-09:00', '10:00-12:00', '13:00-18:00']);
+});
+
+test('does not create availability within overlapping or consecutive appointments', () => {
+  const result = summary([
+    event('one', '2026-07-23T09:00:00', '2026-07-23T10:00:00'),
+    event('overlap', '2026-07-23T09:30:00', '2026-07-23T11:00:00'),
+    event('next', '2026-07-23T11:00:00', '2026-07-23T12:00:00', '0 Test Avenue, Rouen'),
+  ]);
+  expect(result.availableSlots?.map((slot) => `${slot.start}-${slot.end}`)).toEqual(['08:00-09:00', '12:00-18:00']);
+});

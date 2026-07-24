@@ -91,7 +91,7 @@ export function deriveDayReadiness({ loading, error, events, situations, insight
   if (loading) return { state: 'loading', title: 'Je termine de vérifier votre journée.', detail: 'Je vérifie vos rendez-vous, les affectations et les enchaînements.', limitations: [] };
   if (error) return { state: 'insufficient', title: 'Je ne peux pas encore confirmer que votre journée est prête.', detail: 'Une partie du planning n’a pas pu être vérifiée.', limitations: [error] };
   if (!insightsVerified) return { state: 'insufficient', title: 'Je ne peux pas encore confirmer que votre journée est prête.', detail: 'Les contrôles de cohérence du planning ne sont pas encore disponibles.', limitations: ['Conflits et enchaînements non vérifiés'] };
-  const today = events.filter((event) => active(event) && timed(event) && new Date(event.start!).toDateString() === new Date().toDateString());
+  const today = events.filter((event) => active(event) && timed(event));
   if (!today.length) return { state: 'empty', title: 'Aucun engagement n’est prévu aujourd’hui.', detail: 'Je continue de surveiller les changements de planning.', limitations: [] };
   if (situations.length) return { state: 'attention', title: `${situations.length} engagement${situations.length > 1 ? 's' : ''} à sécuriser.`, detail: `${today.length} intervention${today.length > 1 ? 's' : ''} est/sont prévue(s) aujourd’hui ; je vous indique ce qui mérite une action.`, limitations: [] };
   return { state: 'ready', title: 'Votre journée est prête.', detail: 'Les rendez-vous vérifiés sont confirmés, affectés et ne présentent aucun conflit connu.', limitations: [] };

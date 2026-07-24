@@ -22,3 +22,9 @@ test('does not declare the day ready when planning controls are unavailable', ()
   const events = [appointment()]
   assert.equal(deriveDayReadiness({ loading: false, error: null, events, situations: [], insightsVerified: false }).state, 'insufficient')
 })
+
+test('uses the supplied selected-day events instead of the system date', () => {
+  const selectedDay = new Date('2026-07-23T10:00:00')
+  const events = [appointment({ start: selectedDay.toISOString(), end: new Date(selectedDay.getTime() + 3_600_000).toISOString() })]
+  assert.equal(deriveDayReadiness({ loading: false, error: null, events, situations: [], insightsVerified: true }).state, 'ready')
+})
