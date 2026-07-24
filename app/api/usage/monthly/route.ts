@@ -2,12 +2,20 @@ import { NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
 import { getMonthlyUsageSummary, getAccountStatusForArtisan } from '@/src/lib/usage/quotas'
 import { getKadriaAssistantUsageSummary } from '@/src/lib/kadria-assistant/quotas'
+import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { PermissionError, requirePermission } from '@/src/lib/team/access'
 
 export async function GET() {
   try {
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+    }
+    try {
+      requirePermission(await getCurrentTenantContext(), 'billing.read')
+    } catch (permissionError) {
+      if (permissionError instanceof PermissionError) return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+      throw permissionError
     }
 
     const result = await getMonthlyUsageSummary(session.artisanId)

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { getSession } from '@/src/lib/auth-utils'
 import { getPlanLabel, normalizePlan } from '@/src/lib/plans'
+import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { PermissionError, requirePermission } from '@/src/lib/team/access'
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY
@@ -14,6 +16,13 @@ export async function POST(request: NextRequest) {
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+    }
+
+    try {
+      requirePermission(await getCurrentTenantContext(), 'billing.manage')
+    } catch (permissionError) {
+      if (permissionError instanceof PermissionError) return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+      throw permissionError
     }
 
     const { targetPlan } = await request.json()
