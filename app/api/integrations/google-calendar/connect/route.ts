@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { getSession } from '@/src/lib/auth-utils'
+import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { checkPermission } from '@/src/lib/team/access'
 
 const GOOGLE_CALENDAR_OAUTH_STATE_COOKIE = 'kadria-gcal-state'
 const GOOGLE_OAUTH_SCOPES = [
@@ -14,6 +16,10 @@ export async function GET(_request: NextRequest) {
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+    }
+
+    if (!checkPermission(await getCurrentTenantContext(), 'integrations.manage')) {
+      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID

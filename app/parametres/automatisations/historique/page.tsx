@@ -209,6 +209,7 @@ function AutomationsHistoryPageContent() {
   const [submittingId, setSubmittingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedRun, setSelectedRun] = useState<AutomationHistoryRun | null>(null)
+  const [query, setQuery] = useState('')
   const [filters, setFilters] = useState({
     status: '',
     type: '',
@@ -262,7 +263,12 @@ function AutomationsHistoryPageContent() {
     void load(1, filters)
   }, [filters.period, filters.status, filters.type, filters.mode, filters.entityType])
 
-  const hasRuns = runs.length > 0
+  const filteredRuns = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase('fr-FR')
+    if (!normalizedQuery) return runs
+    return runs.filter((run) => [run.automationTitle, run.entityLabel, run.triggerReason, run.statusLabel].some((value) => value.toLocaleLowerCase('fr-FR').includes(normalizedQuery)))
+  }, [query, runs])
+  const hasRuns = filteredRuns.length > 0
 
   async function runAction(run: AutomationHistoryRun, action: 'execute' | 'ignore' | 'retry') {
     const path =
@@ -296,7 +302,7 @@ function AutomationsHistoryPageContent() {
 
   const groupedRuns = useMemo(() => {
     const groups = new Map<string, AutomationHistoryRun[]>()
-    for (const run of runs) {
+    for (const run of filteredRuns) {
       const key = getChronologyLabel(run.createdAt)
       const items = groups.get(key) || []
       items.push(run)
@@ -306,14 +312,14 @@ function AutomationsHistoryPageContent() {
     return ["Aujourd'hui", 'Hier', 'Cette semaine', 'Plus ancien']
       .map((label) => ({ label, runs: groups.get(label) || [] }))
       .filter((group) => group.runs.length > 0)
-  }, [runs])
+  }, [filteredRuns])
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8 text-slate-900">
       <nav aria-label="Fil d’Ariane" className="mb-4 text-sm text-slate-500">Workspace / Paramètres / Automatisations / <span className="text-slate-700">Historique</span></nav>
       <div>
         <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Suivi des actions Kadria</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Journal des actions</p>
           <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{headerLabel}</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
             Retrouvez les actions deja lancees, celles qui attendent votre accord et celles qui meritent votre attention.
@@ -348,6 +354,7 @@ function AutomationsHistoryPageContent() {
               <p className="text-sm font-semibold text-white">Retrouver une action en quelques secondes</p>
               <p className="mt-1 text-sm text-zinc-400">Affinez simplement par periode, situation, aide concernee ou element suivi.</p>
             </div>
+            <label className="w-full sm:max-w-xs"><span className="sr-only">Rechercher une action</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher une action…" className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white placeholder:text-zinc-500" /></label>
           </div>
           <div className="grid gap-3 lg:grid-cols-5">
             <label className="rounded-2xl border border-white/10 bg-black/20 p-3">
